@@ -256,7 +256,6 @@
            DISPLAY "Running IPCrypt specification test vectors..."
            DISPLAY " "
            
-      * Test 1: Deterministic mode with 0.0.0.0
            MOVE "Deterministic: 0.0.0.0" TO WS-TEST-NAME
            MOVE WS-TV1-MODE TO WS-MODE
            MOVE WS-TV1-KEY TO WS-HEX-KEY
@@ -266,7 +265,6 @@
            MOVE 0 TO WS-TWEAK-LENGTH
            PERFORM RUN-DETERMINISTIC-TEST
            
-      * Test 2: ND mode with 0.0.0.0
            MOVE "ND: 0.0.0.0" TO WS-TEST-NAME
            MOVE WS-TV2-MODE TO WS-MODE
            MOVE WS-TV2-KEY TO WS-HEX-KEY
@@ -276,7 +274,6 @@
            MOVE 8 TO WS-TWEAK-LENGTH
            PERFORM RUN-ND-TEST
            
-      * Test 3: NDX mode with 0.0.0.0
            MOVE "NDX: 0.0.0.0" TO WS-TEST-NAME
            MOVE WS-TV3-MODE TO WS-MODE
            MOVE WS-TV3-KEY TO WS-HEX-KEY
@@ -286,7 +283,6 @@
            MOVE 16 TO WS-TWEAK-LENGTH
            PERFORM RUN-NDX-TEST
 
-      * Test 4: Deterministic mode with 255.255.255.255
            MOVE "Deterministic: 255.255.255.255" TO WS-TEST-NAME
            MOVE WS-TV4-MODE TO WS-MODE
            MOVE WS-TV4-KEY TO WS-HEX-KEY
@@ -296,7 +292,6 @@
            MOVE 0 TO WS-TWEAK-LENGTH
            PERFORM RUN-DETERMINISTIC-TEST
 
-      * Test 5: ND mode with 255.255.255.255
            MOVE "ND: 255.255.255.255" TO WS-TEST-NAME
            MOVE WS-TV5-MODE TO WS-MODE
            MOVE WS-TV5-KEY TO WS-HEX-KEY
@@ -306,7 +301,6 @@
            MOVE 8 TO WS-TWEAK-LENGTH
            PERFORM RUN-ND-TEST
 
-      * Test 6: NDX mode with 255.255.255.255
            MOVE "NDX: 255.255.255.255" TO WS-TEST-NAME
            MOVE WS-TV6-MODE TO WS-MODE
            MOVE WS-TV6-KEY TO WS-HEX-KEY
@@ -316,7 +310,6 @@
            MOVE 16 TO WS-TWEAK-LENGTH
            PERFORM RUN-NDX-TEST
 
-      * Test 7: Deterministic mode with 192.0.2.1
            MOVE "Deterministic: 192.0.2.1" TO WS-TEST-NAME
            MOVE WS-TV7-MODE TO WS-MODE
            MOVE WS-TV7-KEY TO WS-HEX-KEY
@@ -326,7 +319,6 @@
            MOVE 0 TO WS-TWEAK-LENGTH
            PERFORM RUN-DETERMINISTIC-TEST
 
-      * Test 8: ND mode with 192.0.2.1
            MOVE "ND: 192.0.2.1" TO WS-TEST-NAME
            MOVE WS-TV8-MODE TO WS-MODE
            MOVE WS-TV8-KEY TO WS-HEX-KEY
@@ -336,7 +328,6 @@
            MOVE 8 TO WS-TWEAK-LENGTH
            PERFORM RUN-ND-TEST
 
-      * Test 9: NDX mode with 192.0.2.1
            MOVE "NDX: 192.0.2.1" TO WS-TEST-NAME
            MOVE WS-TV9-MODE TO WS-MODE
            MOVE WS-TV9-KEY TO WS-HEX-KEY
@@ -346,7 +337,6 @@
            MOVE 16 TO WS-TWEAK-LENGTH
            PERFORM RUN-NDX-TEST
 
-      * Test 10: Deterministic mode with IPv6
            MOVE "Deterministic: IPv6 2001:db8:85a3::" TO WS-TEST-NAME
            MOVE WS-TV10-MODE TO WS-MODE
            MOVE WS-TV10-KEY TO WS-HEX-KEY
@@ -356,7 +346,6 @@
            MOVE 0 TO WS-TWEAK-LENGTH
            PERFORM RUN-DETERMINISTIC-TEST
 
-      * Test 11: ND mode with IPv6
            MOVE "ND: IPv6 2001:db8:85a3::" TO WS-TEST-NAME
            MOVE WS-TV11-MODE TO WS-MODE
            MOVE WS-TV11-KEY TO WS-HEX-KEY
@@ -366,7 +355,6 @@
            MOVE 8 TO WS-TWEAK-LENGTH
            PERFORM RUN-ND-TEST
 
-      * Test 12: NDX mode with IPv6
            MOVE "NDX: IPv6 2001:db8:85a3::" TO WS-TEST-NAME
            MOVE WS-TV12-MODE TO WS-MODE
            MOVE WS-TV12-KEY TO WS-HEX-KEY
@@ -376,7 +364,6 @@
            MOVE 16 TO WS-TWEAK-LENGTH
            PERFORM RUN-NDX-TEST
 
-      * Test 13: Deterministic mode with 192.0.2.1 (alt key)
            MOVE "Deterministic: 192.0.2.1 (alt key)" TO WS-TEST-NAME
            MOVE WS-TV13-MODE TO WS-MODE
            MOVE WS-TV13-KEY TO WS-HEX-KEY
@@ -386,7 +373,6 @@
            MOVE 0 TO WS-TWEAK-LENGTH
            PERFORM RUN-DETERMINISTIC-TEST
 
-      * Test 14: ND mode with 192.0.2.1 (alt key)
            MOVE "ND: 192.0.2.1 (alt key)" TO WS-TEST-NAME
            MOVE WS-TV14-MODE TO WS-MODE
            MOVE WS-TV14-KEY TO WS-HEX-KEY
@@ -396,7 +382,6 @@
            MOVE 8 TO WS-TWEAK-LENGTH
            PERFORM RUN-ND-TEST
 
-      * Test 15: NDX mode with 192.0.2.1 (alt key)
            MOVE "NDX: 192.0.2.1 (alt key)" TO WS-TEST-NAME
            MOVE WS-TV15-MODE TO WS-MODE
            MOVE WS-TV15-KEY TO WS-HEX-KEY
@@ -416,10 +401,8 @@
            ADD 1 TO WS-CURRENT-TEST
            ADD 1 TO WS-TOTAL-TESTS
            
-      * Convert hex strings to binary
            PERFORM CONVERT-HEX-TO-BINARY
            
-      * Setup request structure
            SET WS-ENCRYPT TO TRUE
            MOVE WS-MODE TO WS-MODE OF WS-IPCRYPT-REQUEST
            MOVE WS-INPUT-IP TO WS-INPUT-IP OF WS-IPCRYPT-REQUEST
@@ -474,10 +457,8 @@
            ADD 1 TO WS-CURRENT-TEST
            ADD 1 TO WS-TOTAL-TESTS
            
-      * Convert hex strings to binary
            PERFORM CONVERT-HEX-TO-BINARY
            
-      * Setup request structure
            SET WS-ENCRYPT TO TRUE
            MOVE WS-MODE TO WS-MODE OF WS-IPCRYPT-REQUEST
            MOVE WS-INPUT-IP TO WS-INPUT-IP OF WS-IPCRYPT-REQUEST
@@ -521,10 +502,8 @@
            ADD 1 TO WS-CURRENT-TEST
            ADD 1 TO WS-TOTAL-TESTS
            
-      * Convert hex strings to binary
            PERFORM CONVERT-HEX-TO-BINARY
            
-      * Setup request structure
            SET WS-ENCRYPT TO TRUE
            MOVE WS-MODE TO WS-MODE OF WS-IPCRYPT-REQUEST
            MOVE WS-INPUT-IP TO WS-INPUT-IP OF WS-IPCRYPT-REQUEST
@@ -565,11 +544,9 @@
       * Convert hex key and tweak to binary format
       ******************************************************************
        CONVERT-HEX-TO-BINARY.
-      * Convert key from hex string to binary
            CALL 'IPCRYPT-UTILS' USING WS-FUNC-CONVERT-HEX
                WS-HEX-KEY WS-BINARY-KEY SPACES WS-UTIL-STATUS
                
-      * Convert tweak from hex string to binary if provided
            IF WS-TWEAK-LENGTH > 0
                CALL 'IPCRYPT-UTILS' USING WS-FUNC-CONVERT-HEX
                    WS-HEX-TWEAK WS-BINARY-TWEAK SPACES WS-UTIL-STATUS

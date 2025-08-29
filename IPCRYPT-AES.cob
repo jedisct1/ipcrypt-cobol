@@ -124,12 +124,8 @@
            SET AES-SUCCESS TO TRUE
            PERFORM INITIALIZE-AES
            
-           DISPLAY "DEBUG: Received function name: [" 
-               LS-FUNCTION-NAME "]"
-           
            EVALUATE LS-FUNCTION-NAME
                WHEN 'AES-ENCRYPT-BLOCK'
-      * Simple AES-128 ECB encryption for deterministic mode
                    MOVE LS-PARAM-2(1:16) TO WS-MASTER-KEY
                    MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
                    PERFORM AES-ENCRYPT-BLOCK-INTERNAL
@@ -198,15 +194,12 @@
            PERFORM VARYING WS-I FROM 2 BY 1 UNTIL WS-I > 11
                COMPUTE WS-K = WS-I - 1
                
-      * Get last word of previous round key
                MOVE WS-ROUND-KEY-ENTRY(WS-K)(13:4) 
                    TO WS-TEMP-KEY-WORD
                
-      * Apply key schedule core (RotWord, SubWord, XOR with Rcon)
                PERFORM ROT-WORD
                PERFORM SUB-WORD
                
-      * XOR with RCON for first byte
                COMPUTE WS-BYTE-INDEX = WS-K
                PERFORM GET-RCON-VALUE
                MOVE WS-RCON-VAL TO WS-BYTE-A
@@ -214,7 +207,6 @@
                PERFORM XOR-BYTES
                MOVE WS-XOR-BYTE TO WS-SUB-WORD(1:1)
                
-      * Generate first word of new round key
                MOVE WS-ROUND-KEY-ENTRY(WS-K)(1:4) TO WS-PREV-KEY-WORD
                PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
                    MOVE WS-PREV-KEY-WORD(WS-J:1) TO WS-BYTE-A
@@ -225,7 +217,6 @@
                        WS-ROUND-KEY-ENTRY(WS-I)(WS-BYTE-INDEX:1)
                END-PERFORM
                
-      * Generate remaining 3 words by XORing with previous word
                PERFORM VARYING WS-J FROM 2 BY 1 UNTIL WS-J > 4
                    COMPUTE WS-BYTE-INDEX = (WS-J - 1) * 4 + 1
                    MOVE WS-ROUND-KEY-ENTRY(WS-K)(WS-BYTE-INDEX:4)
@@ -275,7 +266,6 @@
       * Convert flat array to column-major matrix for AES
       ******************************************************************
        CONVERT-FLAT-TO-MATRIX.
-      * AES uses column-major order: flat[0] -> matrix[0][0], flat[1] -> matrix[1][0], etc.
            MOVE WS-AES-STATE-FLAT(1:1) TO WS-STATE-BYTE(1, 1)
            MOVE WS-AES-STATE-FLAT(2:1) TO WS-STATE-BYTE(2, 1)
            MOVE WS-AES-STATE-FLAT(3:1) TO WS-STATE-BYTE(3, 1)
@@ -324,42 +314,18 @@
        AES-ENCRYPT-BLOCK-INTERNAL.
            SET AES-SUCCESS TO TRUE
            
-      * Debug: Show input data
-           DISPLAY "DEBUG AES-ENCRYPT: Input first 4 bytes:"
-           DISPLAY "  Byte 1: " FUNCTION ORD(WS-AES-STATE-FLAT(1:1))
-           DISPLAY "  Byte 2: " FUNCTION ORD(WS-AES-STATE-FLAT(2:1))
-           DISPLAY "  Byte 3: " FUNCTION ORD(WS-AES-STATE-FLAT(3:1))
-           DISPLAY "  Byte 4: " FUNCTION ORD(WS-AES-STATE-FLAT(4:1))
-           
            PERFORM AES-KEY-EXPANSION
            
       * Convert flat input to column-major matrix
            PERFORM CONVERT-FLAT-TO-MATRIX
            
-      * Debug: Show state after conversion
-           DISPLAY "DEBUG: State after flat->matrix:"
-           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
-           DISPLAY "  [2,1]: " FUNCTION ORD(WS-STATE-BYTE(2,1))
-           DISPLAY "  [1,2]: " FUNCTION ORD(WS-STATE-BYTE(1,2))
-           
       * Initial round key addition
            MOVE 1 TO WS-ROUND
            PERFORM ADD-ROUND-KEY
            
-      * Debug: After initial AddRoundKey
-           DISPLAY "DEBUG: After initial AddRoundKey:"
-           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
-           
       * Main rounds (1-9)
-           DISPLAY "DEBUG: Before loop, WS-ROUND = " WS-ROUND
-           DISPLAY "DEBUG: Starting main rounds loop"
            PERFORM VARYING WS-ROUND FROM 2 BY 1 UNTIL WS-ROUND > 10
-               DISPLAY "DEBUG: Round " WS-ROUND
                PERFORM SUB-BYTES
-               IF WS-ROUND = 2
-                   DISPLAY "DEBUG: After first SubBytes:"
-                   DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
-               END-IF
                PERFORM SHIFT-ROWS
                IF WS-ROUND < 10
                    PERFORM MIX-COLUMNS
@@ -367,20 +333,8 @@
                PERFORM ADD-ROUND-KEY
            END-PERFORM
            
-      * Debug: Show final state before conversion
-           DISPLAY "DEBUG: Final state before matrix->flat:"
-           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
-           DISPLAY "  [2,1]: " FUNCTION ORD(WS-STATE-BYTE(2,1))
-           
       * Convert matrix back to flat output
            PERFORM CONVERT-MATRIX-TO-FLAT
-           
-      * Debug: Show output
-           DISPLAY "DEBUG: Final output first 4 bytes:"
-           DISPLAY "  Byte 1: " FUNCTION ORD(WS-AES-STATE-FLAT(1:1))
-           DISPLAY "  Byte 2: " FUNCTION ORD(WS-AES-STATE-FLAT(2:1))
-           DISPLAY "  Byte 3: " FUNCTION ORD(WS-AES-STATE-FLAT(3:1))
-           DISPLAY "  Byte 4: " FUNCTION ORD(WS-AES-STATE-FLAT(4:1))
            EXIT.
 
       ******************************************************************
@@ -417,12 +371,10 @@
       * Apply S-Box substitution to state
       ******************************************************************
        SUB-BYTES.
-           DISPLAY "DEBUG: SUB-BYTES called"
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 4
                PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
                    COMPUTE WS-INPUT-BYTE = FUNCTION ORD(
                        WS-STATE-BYTE(WS-I, WS-J)) - 1
-                   DISPLAY "DEBUG: Calling GET-SBOX for [" WS-I "," WS-J "]"
                    PERFORM GET-SBOX-VALUE
                    MOVE WS-OUTPUT-BYTE TO WS-STATE-BYTE(WS-I, WS-J)
                END-PERFORM
@@ -507,13 +459,11 @@
       * Mix a single column using GF multiplication
       ******************************************************************
        MIX-SINGLE-COLUMN.
-      * Save original column
            MOVE WS-STATE-BYTE(1, WS-J) TO WS-TEMP-BYTE(1, 1)
            MOVE WS-STATE-BYTE(2, WS-J) TO WS-TEMP-BYTE(1, 2)
            MOVE WS-STATE-BYTE(3, WS-J) TO WS-TEMP-BYTE(1, 3)
            MOVE WS-STATE-BYTE(4, WS-J) TO WS-TEMP-BYTE(1, 4)
            
-      * Apply MixColumns matrix multiplication
       * First row: 2*s0 + 3*s1 + 1*s2 + 1*s3
            COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL2-VALUE
@@ -599,7 +549,6 @@
       *         [11 13  9 14]
       ******************************************************************
        INV-MIX-SINGLE-COLUMN.
-      * Save original column
            MOVE WS-STATE-BYTE(1, WS-J) TO WS-TEMP-BYTE(1, 1)
            MOVE WS-STATE-BYTE(2, WS-J) TO WS-TEMP-BYTE(1, 2)
            MOVE WS-STATE-BYTE(3, WS-J) TO WS-TEMP-BYTE(1, 3)
@@ -722,7 +671,6 @@
       * HELPER FUNCTIONS - Call IPCRYPT-TABLES functions
       ******************************************************************
        GET-SBOX-VALUE.
-           DISPLAY "DEBUG AES: GET-SBOX called with " WS-INPUT-BYTE
            EVALUATE WS-INPUT-BYTE
                WHEN 0
                    MOVE X"00" TO WS-PARAM-BYTE
@@ -733,8 +681,6 @@
            CALL 'IPCRYPT-TABLES' USING 'GET-SBOX-VALUE'
                WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
            END-CALL
-           DISPLAY "DEBUG AES: SBOX returned " 
-               FUNCTION ORD(WS-OUTPUT-BYTE)
            EXIT.
            
        GET-INV-SBOX-VALUE.
@@ -856,7 +802,6 @@
       * Set the master key for AES operations
       ******************************************************************
        SET-MASTER-KEY.
-      * Key should be passed as parameter
            EXIT.
 
       ******************************************************************
@@ -881,7 +826,6 @@
        KIASU-BC-ENCRYPT-INTERNAL.
            SET AES-SUCCESS TO TRUE
            
-      * Pad 8-byte tweak to 16 bytes
            MOVE 'PAD-TWEAK-8TO16' TO WS-CALL-FUNCTION
            MOVE WS-TWEAK-8 TO WS-CALL-PARAM-1
            CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
@@ -890,11 +834,9 @@
            END-CALL
            MOVE WS-CALL-PARAM-2(1:16) TO WS-TWEAK-16
                
-      * Copy input parameters
            MOVE WS-INPUT-BLOCK TO WS-AES-STATE-FLAT
            MOVE WS-KEY-128 TO WS-MASTER-KEY
            
-      * Expand key for 11 round keys
            PERFORM AES-KEY-EXPANSION
            
       * Initial round: AddRoundKey with key XOR tweak
@@ -919,7 +861,6 @@
            MOVE 11 TO WS-ROUND
            PERFORM KIASU-BC-ADD-ROUND-KEY
            
-      * Copy result
            MOVE WS-AES-STATE-FLAT TO WS-OUTPUT-BLOCK
            EXIT.
 
@@ -930,12 +871,10 @@
       ******************************************************************
        KIASU-BC-ADD-ROUND-KEY.
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-      * First XOR round key with padded tweak
                MOVE WS-ROUND-KEY-ENTRY(WS-ROUND)(WS-I:1) TO WS-BYTE-A
                MOVE WS-TWEAK-16(WS-I:1) TO WS-BYTE-B
                PERFORM XOR-BYTES
                MOVE WS-XOR-BYTE TO WS-TEMP-BYTE-VAL
-      * Then XOR result with state
                MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
                MOVE WS-TEMP-BYTE-VAL TO WS-BYTE-B
                PERFORM XOR-BYTES
@@ -950,7 +889,6 @@
        KIASU-BC-DECRYPT-INTERNAL.
            SET AES-SUCCESS TO TRUE
            
-      * Pad 8-byte tweak to 16 bytes
            MOVE 'PAD-TWEAK-8TO16' TO WS-CALL-FUNCTION
            MOVE WS-TWEAK-8 TO WS-CALL-PARAM-1
            CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
@@ -959,11 +897,9 @@
            END-CALL
            MOVE WS-CALL-PARAM-2(1:16) TO WS-TWEAK-16
                
-      * Copy input parameters
            MOVE WS-INPUT-BLOCK TO WS-AES-STATE-FLAT
            MOVE WS-KEY-128 TO WS-MASTER-KEY
            
-      * Expand key for 11 round keys
            PERFORM AES-KEY-EXPANSION
            
       * Initial round key addition (reverse of final round)
@@ -984,7 +920,6 @@
            MOVE 1 TO WS-ROUND
            PERFORM KIASU-BC-ADD-ROUND-KEY
            
-      * Copy result
            MOVE WS-AES-STATE-FLAT TO WS-OUTPUT-BLOCK
            EXIT.
 
@@ -1005,7 +940,6 @@
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
            MOVE WS-AES-STATE-FLAT TO WS-ENCRYPTED-TWEAK
            
-      * XOR input block with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
                MOVE WS-INPUT-BLOCK(WS-I:1) TO WS-BYTE-A
                MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
@@ -1013,11 +947,9 @@
                MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
            END-PERFORM
            
-      * Encrypt the XOR-ed block with K1 (first half of key)
            MOVE WS-KEY-256(1:16) TO WS-MASTER-KEY
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
            
-      * XOR result back with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
                MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
                MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
@@ -1044,7 +976,6 @@
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
            MOVE WS-AES-STATE-FLAT TO WS-ENCRYPTED-TWEAK
            
-      * XOR input block with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
                MOVE WS-INPUT-BLOCK(WS-I:1) TO WS-BYTE-A
                MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
@@ -1052,11 +983,9 @@
                MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
            END-PERFORM
            
-      * Decrypt the XOR-ed block with K1 (first half of key)
            MOVE WS-KEY-256(1:16) TO WS-MASTER-KEY
            PERFORM AES-DECRYPT-BLOCK-INTERNAL
            
-      * XOR result back with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
                MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
                MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B

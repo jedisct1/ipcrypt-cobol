@@ -109,28 +109,12 @@
       ******************************************************************
        MAIN-DISPATCHER.
            SET UTIL-SUCCESS TO TRUE
-      *    IPCRYPT-UTILS called
            
            EVALUATE LS-FUNCTION-NAME
                WHEN 'IP-TO-BYTES'
-      *            IP-TO-BYTES function
                    MOVE LS-PARAM-1(1:39) TO WS-IP-STRING
                    PERFORM IP-TO-BYTES
-                   DISPLAY "DEBUG UTILS: After IP-TO-BYTES:"
-                   DISPLAY "  DEST-BLOCK[1]: " 
-                       FUNCTION ORD(WS-DEST-BLOCK(1:1))
-                   DISPLAY "  DEST-BLOCK[11]: " 
-                       FUNCTION ORD(WS-DEST-BLOCK(11:1))
-                   DISPLAY "  DEST-BLOCK[12]: " 
-                       FUNCTION ORD(WS-DEST-BLOCK(12:1))
-                   DISPLAY "  DEST-BLOCK[13]: " 
-                       FUNCTION ORD(WS-DEST-BLOCK(13:1))
                    MOVE WS-DEST-BLOCK TO LS-PARAM-2(1:16)
-                   DISPLAY "DEBUG UTILS: After move to LS-PARAM-2:"
-                   DISPLAY "  LS-PARAM-2[1]: " 
-                       FUNCTION ORD(LS-PARAM-2(1:1))
-                   DISPLAY "  LS-PARAM-2[13]: " 
-                       FUNCTION ORD(LS-PARAM-2(13:1))
                    MOVE WS-UTIL-STATUS TO LS-STATUS
                    
                WHEN 'BYTES-TO-IP'
@@ -217,12 +201,10 @@
            MOVE 1 TO WS-START-POS WS-K
            PERFORM 4 TIMES
                PERFORM FIND-NEXT-DOT
-      *        Found dot in IP address
                IF WS-END-POS > WS-START-POS
                    COMPUTE WS-PART-LENGTH = WS-END-POS - WS-START-POS
                    MOVE WS-IP-STRING(WS-START-POS:WS-PART-LENGTH)
                         TO WS-CURRENT-PART
-      *            Parsing octet
                    PERFORM CONVERT-DECIMAL-STRING
                    IF WS-NUMERIC-PART >= 0 AND WS-NUMERIC-PART <= 255
                        COMPUTE WS-I = 12 + WS-K
@@ -297,13 +279,10 @@
       ******************************************************************
        CONVERT-DECIMAL-STRING.
            MOVE 0 TO WS-NUMERIC-PART
-      *    Testing numval
            IF FUNCTION TEST-NUMVAL(WS-CURRENT-PART) = 0
                COMPUTE WS-NUMERIC-PART =
                    FUNCTION NUMVAL(WS-CURRENT-PART)
-      *        Converted to numeric
            ELSE
-      *        TEST-NUMVAL failed
                SET UTIL-INVALID-IP TO TRUE
            END-IF
            EXIT.
@@ -401,7 +380,6 @@
                COMPUTE WS-J = (WS-I - 1) * 2 + 1
                COMPUTE WS-K = (WS-I - 1) * 4 + 1
                MOVE WS-TWEAK-8(WS-J:2) TO WS-TWEAK-16(WS-K:2)
-      * Bytes 3 and 4 of each group remain 0x00
            END-PERFORM
            EXIT.
 
@@ -435,26 +413,7 @@
                WS-TEMP-BYTE-VAL WS-RESULT-BYTE WS-XOR-RESULT
            EXIT.
 
-      ******************************************************************
-      * CLEAR-BLOCK
-      * Clear a 16-byte block with zeros
-      ******************************************************************
-       CLEAR-BLOCK.
-           MOVE ALL X"00" TO WS-TARGET-BLOCK
-           EXIT.
 
-      ******************************************************************
-      * SECURE-CLEAR-MEMORY
-      * Securely clear sensitive memory areas
-      ******************************************************************
-       SECURE-CLEAR-MEMORY.
-           PERFORM 3 TIMES
-               MOVE ALL X"FF" TO WS-TARGET-BLOCK
-               MOVE ALL X"AA" TO WS-TARGET-BLOCK
-               MOVE ALL X"55" TO WS-TARGET-BLOCK
-               MOVE ALL X"00" TO WS-TARGET-BLOCK
-           END-PERFORM
-           EXIT.
 
       ******************************************************************
       * BYTES-TO-IP
@@ -522,7 +481,6 @@
            
       * Convert each 2-byte group to hex
            PERFORM VARYING WS-I FROM 1 BY 2 UNTIL WS-I > 16
-      * Get the two bytes
                IF WS-DEST-BLOCK(WS-I:1) = X"00"
                    MOVE 0 TO WS-BYTE-VAL
                ELSE
@@ -543,7 +501,6 @@
                MOVE WS-HEX-PAIR TO WS-IP-STRING(WS-CHAR-POS:2)
                ADD 2 TO WS-CHAR-POS
                
-      * Add colon separator unless last group
                IF WS-I < 15
                    MOVE ':' TO WS-IP-STRING(WS-CHAR-POS:1)
                    ADD 1 TO WS-CHAR-POS
@@ -572,17 +529,6 @@
            END-IF
            EXIT.
 
-      ******************************************************************
-      * INITIALIZE-UTILS
-      * Initialize utility functions
-      ******************************************************************
-       INITIALIZE-UTILS.
-           SET UTIL-SUCCESS TO TRUE
-           MOVE SPACES TO WS-ERROR-MESSAGE
-           MOVE ALL X"00" TO WS-IP-WORK-AREA
-           MOVE ALL X"00" TO WS-HEX-WORK-AREA
-           MOVE ALL X"00" TO WS-BLOCK-WORK-AREA
-           EXIT.
 
       ******************************************************************
       * PARSE-IPV4-MAPPED-IPV6

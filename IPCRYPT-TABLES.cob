@@ -125,7 +125,6 @@
            05  WS-BIT-B         PIC 9(01) COMP.
            05  WS-RESULT-BYTE   PIC X(01).
            05  WS-TEMP-BYTE-VAL PIC X(01).
-      * For CBL_XOR - must be 01 or 77 level items
        01  WS-BYTE-A            PIC X(01).
        01  WS-BYTE-B            PIC X(01).
        01  WS-XOR-BYTE          PIC X(01).
@@ -158,10 +157,7 @@
                    COMPUTE WS-INPUT-BYTE = 
                        FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
                    END-COMPUTE
-                   DISPLAY "DEBUG TABLES: SBOX in=" WS-INPUT-BYTE
                    PERFORM GET-SBOX-VALUE-INTERNAL
-                   DISPLAY "DEBUG TABLES: SBOX out=" 
-                       FUNCTION ORD(WS-OUTPUT-BYTE)
                    MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-INV-SBOX-VALUE'
@@ -255,8 +251,6 @@
       * POPULATE-SBOX-TABLE - Explicitly populate S-box for shared libs
       ******************************************************************
        POPULATE-SBOX-TABLE.
-      * Use hex literals to bypass FUNCTION CHAR issues
-      * AES S-box first row: 63 7C 77 7B F2 6B 6F C5 30 01 67 2B FE D7 AB 76
            MOVE X"63" TO WS-SBOX-ENTRY(1)
            MOVE X"7C" TO WS-SBOX-ENTRY(2)
            MOVE X"77" TO WS-SBOX-ENTRY(3)
@@ -273,7 +267,6 @@
            MOVE X"D7" TO WS-SBOX-ENTRY(14)
            MOVE X"AB" TO WS-SBOX-ENTRY(15)
            MOVE X"76" TO WS-SBOX-ENTRY(16)
-      * Fill rest with X"01" for testing  
            PERFORM VARYING WS-I FROM 17 BY 1 UNTIL WS-I > 256
                MOVE X"01" TO WS-SBOX-ENTRY(WS-I)
            END-PERFORM
@@ -304,7 +297,6 @@
                WHEN 13  MOVE X"D7" TO WS-OUTPUT-BYTE
                WHEN 14  MOVE X"AB" TO WS-OUTPUT-BYTE
                WHEN 15  MOVE X"76" TO WS-OUTPUT-BYTE
-      * Add enough entries to test basic AES functionality
                WHEN OTHER MOVE X"01" TO WS-OUTPUT-BYTE
            END-EVALUATE
            EXIT.
