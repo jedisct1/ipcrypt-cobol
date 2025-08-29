@@ -181,14 +181,16 @@
            
            PERFORM VARYING WS-I FROM 2 BY 1 UNTIL WS-I > 11
                COMPUTE WS-K = WS-I - 1
+               
+      * Get last word of previous round key
                MOVE WS-ROUND-KEY-ENTRY(WS-K)(13:4) 
                    TO WS-TEMP-KEY-WORD
                
-      * Rotate word for every 4th key
+      * Apply key schedule core (RotWord, SubWord, XOR with Rcon)
                PERFORM ROT-WORD
                PERFORM SUB-WORD
                
-      * XOR with RCON
+      * XOR with RCON for first byte
                COMPUTE WS-BYTE-INDEX = WS-K
                PERFORM GET-RCON-VALUE
                MOVE WS-RCON-VAL TO WS-BYTE-A
@@ -196,16 +198,34 @@
                PERFORM XOR-BYTES
                MOVE WS-XOR-BYTE TO WS-SUB-WORD(1:1)
                
-      * XOR with previous key
+      * Generate first word of new round key
+               MOVE WS-ROUND-KEY-ENTRY(WS-K)(1:4) TO WS-PREV-KEY-WORD
                PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
-                   COMPUTE WS-BYTE-INDEX = (WS-J - 1) * 4 + 1
-                   MOVE WS-ROUND-KEY-ENTRY(WS-K)(WS-BYTE-INDEX:4) 
-                        TO WS-PREV-KEY-WORD
                    MOVE WS-PREV-KEY-WORD(WS-J:1) TO WS-BYTE-A
                    MOVE WS-SUB-WORD(WS-J:1) TO WS-BYTE-B
                    PERFORM XOR-BYTES
-                   MOVE WS-XOR-BYTE TO WS-ROUND-KEY-ENTRY(WS-I)
-                       (WS-BYTE-INDEX:1)
+                   COMPUTE WS-BYTE-INDEX = WS-J
+                   MOVE WS-XOR-BYTE TO 
+                       WS-ROUND-KEY-ENTRY(WS-I)(WS-BYTE-INDEX:1)
+               END-PERFORM
+               
+      * Generate remaining 3 words by XORing with previous word
+               PERFORM VARYING WS-J FROM 2 BY 1 UNTIL WS-J > 4
+                   COMPUTE WS-BYTE-INDEX = (WS-J - 1) * 4 + 1
+                   MOVE WS-ROUND-KEY-ENTRY(WS-K)(WS-BYTE-INDEX:4)
+                       TO WS-PREV-KEY-WORD
+                   COMPUTE WS-K = (WS-J - 2) * 4 + 1  
+                   MOVE WS-ROUND-KEY-ENTRY(WS-I)(WS-K:4)
+                       TO WS-TEMP-KEY-WORD
+                   PERFORM VARYING WS-K FROM 1 BY 1 UNTIL WS-K > 4
+                       MOVE WS-PREV-KEY-WORD(WS-K:1) TO WS-BYTE-A
+                       MOVE WS-TEMP-KEY-WORD(WS-K:1) TO WS-BYTE-B
+                       PERFORM XOR-BYTES
+                       COMPUTE WS-BYTE-INDEX = 
+                           (WS-J - 1) * 4 + WS-K
+                       MOVE WS-XOR-BYTE TO 
+                           WS-ROUND-KEY-ENTRY(WS-I)(WS-BYTE-INDEX:1)
+                   END-PERFORM
                END-PERFORM
            END-PERFORM
            EXIT.
@@ -396,7 +416,54 @@
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-STATE-BYTE(1, WS-J)
            
-      * Continue for other rows (simplified for space)
+      * Second row: 1*s0 + 2*s1 + 3*s2 + 1*s3
+           MOVE WS-TEMP-BYTE(1,1) TO WS-BYTE-A
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           PERFORM GET-MUL2-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL3-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE(1,4) TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(2, WS-J)
+           
+      * Third row: 1*s0 + 1*s1 + 2*s2 + 3*s3
+           MOVE WS-TEMP-BYTE(1,1) TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE(1,2) TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL2-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL3-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(3, WS-J)
+           
+      * Fourth row: 3*s0 + 1*s1 + 1*s2 + 2*s3
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           PERFORM GET-MUL3-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE(1,2) TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE(1,3) TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL2-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(4, WS-J)
+           
            EXIT.
 
       ******************************************************************
@@ -652,16 +719,20 @@
       ******************************************************************
       * KIASU-BC-ADD-ROUND-KEY
       * Add round key with tweak XOR for KIASU-BC
+      * Per spec: state = state XOR (round_key XOR padded_tweak)
       ******************************************************************
        KIASU-BC-ADD-ROUND-KEY.
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-ROUND-KEY-ENTRY(WS-ROUND)(WS-I:1)
-                   WS-TWEAK-16(WS-I:1) WS-TEMP-BYTE-VAL
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-AES-STATE-FLAT(WS-I:1) WS-TEMP-BYTE-VAL
-                   WS-RESULT-BYTE
-               MOVE WS-RESULT-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
+      * First XOR round key with padded tweak
+               MOVE WS-ROUND-KEY-ENTRY(WS-ROUND)(WS-I:1) TO WS-BYTE-A
+               MOVE WS-TWEAK-16(WS-I:1) TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-TEMP-BYTE-VAL
+      * Then XOR result with state
+               MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
+               MOVE WS-TEMP-BYTE-VAL TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
            END-PERFORM
            EXIT.
 
@@ -708,14 +779,15 @@
       ******************************************************************
       * AES-XTS-ENCRYPT-INTERNAL
       * AES-XTS mode encryption
+      * Per spec: Uses two 16-byte keys from 32-byte input
       ******************************************************************
        AES-XTS-ENCRYPT-INTERNAL.
            SET AES-SUCCESS TO TRUE
            
-      * Split 32-byte key into encryption and tweak keys
-           MOVE WS-KEY-256(1:16) TO WS-KEY-128
+      * Split 32-byte key: K1 for data, K2 for tweak
+      * K1 = key[0:16], K2 = key[16:32]
            
-      * Encrypt the tweak with second half of key
+      * Encrypt the tweak with K2 (second half of key)
            MOVE WS-TWEAK-16 TO WS-AES-STATE-FLAT
            MOVE WS-KEY-256(17:16) TO WS-MASTER-KEY
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
@@ -723,20 +795,22 @@
            
       * XOR input block with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-INPUT-BLOCK(WS-I:1) WS-ENCRYPTED-TWEAK(WS-I:1)
-                   WS-AES-STATE-FLAT(WS-I:1)
+               MOVE WS-INPUT-BLOCK(WS-I:1) TO WS-BYTE-A
+               MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
            END-PERFORM
            
-      * Encrypt the XOR-ed block with first half of key
+      * Encrypt the XOR-ed block with K1 (first half of key)
            MOVE WS-KEY-256(1:16) TO WS-MASTER-KEY
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
            
       * XOR result back with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-AES-STATE-FLAT(WS-I:1) WS-ENCRYPTED-TWEAK(WS-I:1)
-                   WS-OUTPUT-BLOCK(WS-I:1)
+               MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
+               MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-OUTPUT-BLOCK(WS-I:1)
            END-PERFORM
            
            EXIT.
@@ -744,14 +818,15 @@
       ******************************************************************
       * AES-XTS-DECRYPT-INTERNAL
       * AES-XTS mode decryption
+      * Per spec: Uses two 16-byte keys from 32-byte input
       ******************************************************************
        AES-XTS-DECRYPT-INTERNAL.
            SET AES-SUCCESS TO TRUE
            
-      * Split 32-byte key into decryption and tweak keys
-           MOVE WS-KEY-256(1:16) TO WS-KEY-128
+      * Split 32-byte key: K1 for data, K2 for tweak
+      * K1 = key[0:16], K2 = key[16:32]
            
-      * Encrypt the tweak with second half of key
+      * Encrypt the tweak with K2 (second half of key)
            MOVE WS-TWEAK-16 TO WS-AES-STATE-FLAT
            MOVE WS-KEY-256(17:16) TO WS-MASTER-KEY
            PERFORM AES-ENCRYPT-BLOCK-INTERNAL
@@ -759,20 +834,22 @@
            
       * XOR input block with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-INPUT-BLOCK(WS-I:1) WS-ENCRYPTED-TWEAK(WS-I:1)
-                   WS-AES-STATE-FLAT(WS-I:1)
+               MOVE WS-INPUT-BLOCK(WS-I:1) TO WS-BYTE-A
+               MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
            END-PERFORM
            
-      * Decrypt the XOR-ed block with first half of key
+      * Decrypt the XOR-ed block with K1 (first half of key)
            MOVE WS-KEY-256(1:16) TO WS-MASTER-KEY
            PERFORM AES-DECRYPT-BLOCK-INTERNAL
            
       * XOR result back with encrypted tweak
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-AES-STATE-FLAT(WS-I:1) WS-ENCRYPTED-TWEAK(WS-I:1)
-                   WS-OUTPUT-BLOCK(WS-I:1)
+               MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
+               MOVE WS-ENCRYPTED-TWEAK(WS-I:1) TO WS-BYTE-B
+               PERFORM XOR-BYTES
+               MOVE WS-XOR-BYTE TO WS-OUTPUT-BLOCK(WS-I:1)
            END-PERFORM
            
            EXIT.
