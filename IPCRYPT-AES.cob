@@ -626,24 +626,17 @@
            PERFORM AES-KEY-EXPANSION
            
       * Initial round: AddRoundKey with key XOR tweak
-           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-ROUND-KEY-ENTRY(1)(WS-I:1) WS-TWEAK-16(WS-I:1)
-                   WS-TEMP-BYTE-VAL
-               CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-                   WS-AES-STATE-FLAT(WS-I:1) WS-TEMP-BYTE-VAL
-                   WS-RESULT-BYTE
-               MOVE WS-RESULT-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
-           END-PERFORM
+           MOVE 1 TO WS-ROUND
+           PERFORM KIASU-BC-ADD-ROUND-KEY
            
       * Main rounds (1-9)
-           PERFORM VARYING WS-ROUND FROM 2 BY 1 UNTIL WS-ROUND > 10
+           PERFORM VARYING WS-ROUND FROM 1 BY 1 UNTIL WS-ROUND > 9
                PERFORM SUB-BYTES
                PERFORM SHIFT-ROWS
-               IF WS-ROUND < 10
-                   PERFORM MIX-COLUMNS
-               END-IF
+               PERFORM MIX-COLUMNS
+               ADD 1 TO WS-ROUND
                PERFORM KIASU-BC-ADD-ROUND-KEY
+               SUBTRACT 1 FROM WS-ROUND
            END-PERFORM
            
       * Final round (10)
@@ -693,20 +686,18 @@
       * Initial round key addition (reverse of final round)
            MOVE 11 TO WS-ROUND
            PERFORM KIASU-BC-ADD-ROUND-KEY
-           
-      * Inverse main rounds (10-2)
-           PERFORM VARYING WS-ROUND FROM 10 BY -1 UNTIL WS-ROUND < 2
-               PERFORM INV-SHIFT-ROWS
-               PERFORM INV-SUB-BYTES
-               PERFORM KIASU-BC-ADD-ROUND-KEY
-               IF WS-ROUND > 1
-                   PERFORM INV-MIX-COLUMNS
-               END-IF
-           END-PERFORM
-           
-      * Final round (1)
            PERFORM INV-SHIFT-ROWS
            PERFORM INV-SUB-BYTES
+           
+      * Inverse main rounds (9-1)
+           PERFORM VARYING WS-ROUND FROM 10 BY -1 UNTIL WS-ROUND < 2
+               PERFORM KIASU-BC-ADD-ROUND-KEY
+               PERFORM INV-MIX-COLUMNS
+               PERFORM INV-SHIFT-ROWS
+               PERFORM INV-SUB-BYTES
+           END-PERFORM
+           
+      * Final round (0)
            MOVE 1 TO WS-ROUND
            PERFORM KIASU-BC-ADD-ROUND-KEY
            
