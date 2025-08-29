@@ -44,6 +44,14 @@
            05  WS-FUNC-BYTES-TO-IP  PIC X(30) VALUE
                "BYTES-TO-IP                   ".
 
+      * Call parameter wrappers (must be 01 level for CALL)
+       01  WS-CALL-FUNCTION     PIC X(30).
+       01  WS-CALL-PARAM-1      PIC X(64).
+       01  WS-CALL-PARAM-2      PIC X(64).
+       01  WS-CALL-PARAM-3      PIC X(64).
+       01  WS-CALL-PARAM-4      PIC X(64).
+       01  WS-CALL-SPACES       PIC X(64) VALUE SPACES.
+
        LINKAGE SECTION.
        01  LS-IPCRYPT-REQUEST.
            05  LS-OPERATION     PIC X(01).
@@ -172,8 +180,15 @@
            
       * Convert IP address to 16-byte block
       *    Call IP-TO-BYTES
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
-               LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
+           MOVE WS-FUNC-IP-TO-BYTES TO WS-CALL-FUNCTION
+           MOVE LS-INPUT-IP TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+               WS-UTILITY-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:16) TO WS-INPUT-BLOCK
       *    IP-TO-BYTES completed
            IF NOT UTIL-SUCCESS
       *        Set ERROR-INVALID-IP
@@ -184,18 +199,33 @@
            
       * Perform AES-128 encryption or decryption
            IF LS-ENCRYPT
-               CALL 'IPCRYPT-AES' USING 'AES-ENCRYPT-BLOCK'
-                   WS-INPUT-BLOCK WS-KEY-128
-               MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
+               MOVE 'AES-ENCRYPT-BLOCK' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
            ELSE
-               CALL 'IPCRYPT-AES' USING 'AES-DECRYPT-BLOCK'
-                   WS-INPUT-BLOCK WS-KEY-128
-               MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
+               MOVE 'AES-DECRYPT-BLOCK' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
            END-IF
            
       * Convert result back to IP address string
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
-               WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES WS-UTILITY-STATUS
+           MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
+           MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+               WS-UTILITY-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
                MOVE "Failed to convert result to IP"
@@ -214,8 +244,15 @@
            SET IPCRYPT-SUCCESS TO TRUE
            
       * Convert IP address to 16-byte block
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
-               LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
+           MOVE WS-FUNC-IP-TO-BYTES TO WS-CALL-FUNCTION
+           MOVE LS-INPUT-IP TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+               WS-UTILITY-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:16) TO WS-INPUT-BLOCK
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
                MOVE "Invalid IP address format" TO WS-ERROR-MESSAGE
@@ -232,14 +269,26 @@
                END-IF
                
       * Perform KIASU-BC encryption
-               CALL 'IPCRYPT-AES' USING 'KIASU-BC-ENCRYPT'
-                   WS-INPUT-BLOCK WS-KEY-128 WS-TWEAK(1:8)
-               MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
+               MOVE 'KIASU-BC-ENCRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+               MOVE WS-TWEAK TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+                   WS-CALL-PARAM-4
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
-                   WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
+               MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
+               MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE SPACES TO WS-CALL-PARAM-2
+               MOVE SPACES TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                    WS-UTILITY-STATUS
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
                IF NOT UTIL-SUCCESS
                    SET ERROR-INVALID-IP TO TRUE
                    MOVE "Failed to convert result to IP"
@@ -256,14 +305,26 @@
                END-IF
                
       * Perform KIASU-BC decryption
-               CALL 'IPCRYPT-AES' USING 'KIASU-BC-DECRYPT'
-                   WS-INPUT-BLOCK WS-KEY-128 WS-TWEAK(1:8)
-               MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
+               MOVE 'KIASU-BC-DECRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+               MOVE WS-TWEAK TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+                   WS-CALL-PARAM-4
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
-                   WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
+               MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
+               MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE SPACES TO WS-CALL-PARAM-2
+               MOVE SPACES TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                    WS-UTILITY-STATUS
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
                IF NOT UTIL-SUCCESS
                    SET ERROR-INVALID-IP TO TRUE
                    MOVE "Failed to convert result to IP"
@@ -290,8 +351,15 @@
            END-IF
            
       * Convert IP address to 16-byte block
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
-               LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
+           MOVE WS-FUNC-IP-TO-BYTES TO WS-CALL-FUNCTION
+           MOVE LS-INPUT-IP TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+               WS-UTILITY-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:16) TO WS-INPUT-BLOCK
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
                MOVE "Invalid IP address format" TO WS-ERROR-MESSAGE
@@ -308,14 +376,26 @@
                END-IF
                
       * Perform AES-XTS encryption
-               CALL 'IPCRYPT-AES' USING 'AES-XTS-ENCRYPT'
-                   WS-INPUT-BLOCK WS-KEY-256 WS-TWEAK(1:16)
-               MOVE WS-KEY-256(1:16) TO WS-OUTPUT-BLOCK
+               MOVE 'AES-XTS-ENCRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-256 TO WS-CALL-PARAM-2
+               MOVE WS-TWEAK TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+                   WS-CALL-PARAM-4
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
-                   WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
+               MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
+               MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE SPACES TO WS-CALL-PARAM-2
+               MOVE SPACES TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                    WS-UTILITY-STATUS
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
                IF NOT UTIL-SUCCESS
                    SET ERROR-INVALID-IP TO TRUE
                    MOVE "Failed to convert result to IP"
@@ -332,14 +412,26 @@
                END-IF
                
       * Perform AES-XTS decryption
-               CALL 'IPCRYPT-AES' USING 'AES-XTS-DECRYPT'
-                   WS-INPUT-BLOCK WS-KEY-256 WS-TWEAK(1:16)
-               MOVE WS-KEY-256(1:16) TO WS-OUTPUT-BLOCK
+               MOVE 'AES-XTS-DECRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE WS-KEY-256 TO WS-CALL-PARAM-2
+               MOVE WS-TWEAK TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
+                   WS-CALL-PARAM-4
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
-                   WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
+               MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
+               MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
+               MOVE SPACES TO WS-CALL-PARAM-2
+               MOVE SPACES TO WS-CALL-PARAM-3
+               CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                    WS-UTILITY-STATUS
+               END-CALL
+               MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
                IF NOT UTIL-SUCCESS
                    SET ERROR-INVALID-IP TO TRUE
                    MOVE "Failed to convert result to IP"
@@ -387,6 +479,7 @@
       * Use FUNCTION RANDOM for each byte
            PERFORM VARYING WS-WORK-I FROM 1 BY 1 UNTIL WS-WORK-I > 8
                COMPUTE WS-RANDOM-BYTE = FUNCTION RANDOM * 256
+               END-COMPUTE
                MOVE FUNCTION CHAR(WS-RANDOM-BYTE + 1) 
                    TO WS-TWEAK(WS-WORK-I:1)
            END-PERFORM
@@ -400,6 +493,7 @@
       * Use FUNCTION RANDOM for each byte
            PERFORM VARYING WS-WORK-I FROM 1 BY 1 UNTIL WS-WORK-I > 16
                COMPUTE WS-RANDOM-BYTE = FUNCTION RANDOM * 256
+               END-COMPUTE
                MOVE FUNCTION CHAR(WS-RANDOM-BYTE + 1) 
                    TO WS-TWEAK(WS-WORK-I:1)
            END-PERFORM

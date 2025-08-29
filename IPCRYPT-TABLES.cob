@@ -117,9 +117,6 @@
            05  WS-J             PIC 9(03) COMP.
            05  WS-INPUT-BYTE    PIC 9(03) COMP.
            05  WS-OUTPUT-BYTE   PIC X(01).
-           05  WS-BYTE-A        PIC X(01).
-           05  WS-BYTE-B        PIC X(01).
-           05  WS-XOR-BYTE      PIC X(01).
            05  WS-TEMP-BYTE     PIC 9(03) COMP.
            05  WS-TEMP-A        PIC 9(03) COMP.
            05  WS-TEMP-B        PIC 9(03) COMP.
@@ -128,6 +125,10 @@
            05  WS-BIT-B         PIC 9(01) COMP.
            05  WS-RESULT-BYTE   PIC X(01).
            05  WS-TEMP-BYTE-VAL PIC X(01).
+      * For CBL_XOR - must be 01 or 77 level items
+       01  WS-BYTE-A            PIC X(01).
+       01  WS-BYTE-B            PIC X(01).
+       01  WS-XOR-BYTE          PIC X(01).
 
       ******************************************************************
       * LINKAGE SECTION - For receiving parameters from callers
@@ -152,55 +153,82 @@
                    PERFORM INITIALIZE-TABLES-INTERNAL
                    
                WHEN 'GET-SBOX-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-SBOX-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-INV-SBOX-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-INV-SBOX-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-RCON-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-RCON-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'XOR-BYTES'
-                   MOVE LS-PARAM-1 TO WS-BYTE-A
-                   MOVE LS-PARAM-2 TO WS-BYTE-B
+                   MOVE LS-PARAM-1(1:1) TO WS-BYTE-A
+                   MOVE LS-PARAM-2(1:1) TO WS-BYTE-B
                    PERFORM XOR-BYTES-INTERNAL
-                   MOVE WS-XOR-BYTE TO LS-PARAM-2
+                   MOVE WS-XOR-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL2-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL2-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL3-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL3-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL9-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL9-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL11-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL11-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL13-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL13-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN 'GET-MUL14-VALUE'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   MOVE LS-PARAM-1(1:1) TO WS-TEMP-BYTE-VAL
+                   COMPUTE WS-INPUT-BYTE = 
+                       FUNCTION ORD(WS-TEMP-BYTE-VAL) - 1
+                   END-COMPUTE
                    PERFORM GET-MUL14-VALUE-INTERNAL
-                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2(1:1)
                    
                WHEN OTHER
                    CONTINUE
@@ -271,6 +299,7 @@
            CALL "CBL_XOR" USING WS-BYTE-A 
                                WS-XOR-BYTE 
                                BY VALUE 1
+           END-CALL
            EXIT.
 
       ******************************************************************
@@ -279,9 +308,12 @@
       ******************************************************************
        GET-MUL2-VALUE-INTERNAL.
            COMPUTE WS-TEMP-BYTE = FUNCTION ORD(WS-INPUT-BYTE) - 1
+           END-COMPUTE
            COMPUTE WS-TEMP-BYTE = WS-TEMP-BYTE * 2
+           END-COMPUTE
            IF WS-TEMP-BYTE > 255
                COMPUTE WS-TEMP-BYTE = WS-TEMP-BYTE - 256
+               END-COMPUTE
       * XOR with 0x1B for GF(256) reduction
                MOVE FUNCTION CHAR(WS-TEMP-BYTE + 1) TO WS-BYTE-A
                MOVE X"1B" TO WS-BYTE-B
@@ -297,10 +329,10 @@
       * Multiply by 3 in GF(256) for MixColumns (mul2 XOR input)
       ******************************************************************
        GET-MUL3-VALUE-INTERNAL.
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.
@@ -311,7 +343,7 @@
       ******************************************************************
        GET-MUL9-VALUE-INTERNAL.
       * 9 = 8 + 1 = x^3 + 1
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
       * Multiply by 2
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
@@ -324,7 +356,7 @@
            PERFORM GET-MUL2-VALUE-INTERNAL
       * XOR with original (8 + 1 = 9)
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
-           MOVE LS-PARAM-1 TO WS-BYTE-B
+           MOVE LS-PARAM-1(1:1) TO WS-BYTE-B
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.
@@ -335,7 +367,7 @@
       ******************************************************************
        GET-MUL11-VALUE-INTERNAL.
       * 11 = 8 + 2 + 1 = x^3 + x + 1
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
       * Multiply by 2
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-TEMP-BYTE-VAL
@@ -351,7 +383,7 @@
            PERFORM XOR-BYTES-INTERNAL
       * XOR with original
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           MOVE LS-PARAM-1 TO WS-BYTE-B
+           MOVE LS-PARAM-1(1:1) TO WS-BYTE-B
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.
@@ -362,7 +394,7 @@
       ******************************************************************
        GET-MUL13-VALUE-INTERNAL.
       * 13 = 8 + 4 + 1 = x^3 + x^2 + 1
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
       * Multiply by 2
            PERFORM GET-MUL2-VALUE-INTERNAL
       * Multiply by 2 again (now x4)
@@ -378,7 +410,7 @@
            PERFORM XOR-BYTES-INTERNAL
       * XOR with original
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           MOVE LS-PARAM-1 TO WS-BYTE-B
+           MOVE LS-PARAM-1(1:1) TO WS-BYTE-B
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.
@@ -389,7 +421,7 @@
       ******************************************************************
        GET-MUL14-VALUE-INTERNAL.
       * 14 = 8 + 4 + 2 = x^3 + x^2 + x
-           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           MOVE FUNCTION CHAR(WS-INPUT-BYTE + 1) TO WS-BYTE-A
       * Multiply by 2
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-TEMP-BYTE-VAL

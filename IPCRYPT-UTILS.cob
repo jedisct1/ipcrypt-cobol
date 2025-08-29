@@ -113,20 +113,20 @@
            EVALUATE LS-FUNCTION-NAME
                WHEN 'IP-TO-BYTES'
       *            IP-TO-BYTES function
-                   MOVE LS-PARAM-1 TO WS-IP-STRING
+                   MOVE LS-PARAM-1(1:39) TO WS-IP-STRING
                    PERFORM IP-TO-BYTES
-                   MOVE WS-DEST-BLOCK TO LS-PARAM-2
+                   MOVE WS-DEST-BLOCK TO LS-PARAM-2(1:16)
                    MOVE WS-UTIL-STATUS TO LS-STATUS
                    
                WHEN 'BYTES-TO-IP'
-                   MOVE LS-PARAM-1 TO WS-DEST-BLOCK
+                   MOVE LS-PARAM-1(1:16) TO WS-DEST-BLOCK
                    PERFORM BYTES-TO-IP
-                   MOVE WS-IP-STRING TO LS-PARAM-2
+                   MOVE WS-IP-STRING TO LS-PARAM-2(1:39)
                    
                WHEN 'CONVERT-HEX-STRING-TO-BYTES'
-                   MOVE LS-PARAM-1 TO WS-HEX-STRING
+                   MOVE LS-PARAM-1(1:32) TO WS-HEX-STRING
                    PERFORM CONVERT-HEX-STRING-TO-BYTES
-                   MOVE WS-HEX-DEST TO LS-PARAM-2
+                   MOVE WS-HEX-DEST TO LS-PARAM-2(1:16)
                    MOVE WS-UTIL-STATUS TO LS-STATUS
                    
                WHEN 'XOR-BLOCKS'

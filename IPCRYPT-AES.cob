@@ -116,44 +116,44 @@
            
            EVALUATE LS-FUNCTION-NAME
                WHEN 'AES-ENCRYPT-BLOCK'
-                   MOVE LS-PARAM-1 TO WS-AES-STATE-FLAT
-                   MOVE LS-PARAM-2 TO WS-MASTER-KEY
+                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
+                   MOVE LS-PARAM-2(1:16) TO WS-MASTER-KEY
                    PERFORM AES-ENCRYPT-BLOCK-INTERNAL
-                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2
+                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2(1:16)
                    
                WHEN 'AES-DECRYPT-BLOCK'
-                   MOVE LS-PARAM-1 TO WS-AES-STATE-FLAT
-                   MOVE LS-PARAM-2 TO WS-MASTER-KEY
+                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
+                   MOVE LS-PARAM-2(1:16) TO WS-MASTER-KEY
                    PERFORM AES-DECRYPT-BLOCK-INTERNAL
-                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2
+                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2(1:16)
                    
                WHEN 'KIASU-BC-ENCRYPT'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BLOCK
-                   MOVE LS-PARAM-2 TO WS-KEY-128
-                   MOVE LS-PARAM-3 TO WS-TWEAK-8
+                   MOVE LS-PARAM-1(1:16) TO WS-INPUT-BLOCK
+                   MOVE LS-PARAM-2(1:16) TO WS-KEY-128
+                   MOVE LS-PARAM-3(1:8) TO WS-TWEAK-8
                    PERFORM KIASU-BC-ENCRYPT-INTERNAL
-                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2(1:16)
                    
                WHEN 'KIASU-BC-DECRYPT'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BLOCK
-                   MOVE LS-PARAM-2 TO WS-KEY-128
-                   MOVE LS-PARAM-3 TO WS-TWEAK-8
+                   MOVE LS-PARAM-1(1:16) TO WS-INPUT-BLOCK
+                   MOVE LS-PARAM-2(1:16) TO WS-KEY-128
+                   MOVE LS-PARAM-3(1:8) TO WS-TWEAK-8
                    PERFORM KIASU-BC-DECRYPT-INTERNAL
-                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2(1:16)
                    
                WHEN 'AES-XTS-ENCRYPT'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BLOCK
-                   MOVE LS-PARAM-2 TO WS-KEY-256
-                   MOVE LS-PARAM-3 TO WS-TWEAK-16
+                   MOVE LS-PARAM-1(1:16) TO WS-INPUT-BLOCK
+                   MOVE LS-PARAM-2(1:32) TO WS-KEY-256
+                   MOVE LS-PARAM-3(1:16) TO WS-TWEAK-16
                    PERFORM AES-XTS-ENCRYPT-INTERNAL
-                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2(1:16)
                    
                WHEN 'AES-XTS-DECRYPT'
-                   MOVE LS-PARAM-1 TO WS-INPUT-BLOCK
-                   MOVE LS-PARAM-2 TO WS-KEY-256
-                   MOVE LS-PARAM-3 TO WS-TWEAK-16
+                   MOVE LS-PARAM-1(1:16) TO WS-INPUT-BLOCK
+                   MOVE LS-PARAM-2(1:32) TO WS-KEY-256
+                   MOVE LS-PARAM-3(1:16) TO WS-TWEAK-16
                    PERFORM AES-XTS-DECRYPT-INTERNAL
-                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2
+                   MOVE WS-OUTPUT-BLOCK TO LS-PARAM-2(1:16)
                    
                WHEN OTHER
                    SET AES-ERROR TO TRUE
@@ -778,3 +778,4 @@
            EXIT.
 
        END PROGRAM IPCRYPT-AES.
+
