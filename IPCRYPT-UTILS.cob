@@ -58,6 +58,14 @@
            05  WS-NUMERIC-PART  PIC 9(03) COMP.
            05  WS-START-POS     PIC 9(03) COMP.
            05  WS-END-POS       PIC 9(03) COMP.
+           05  WS-GROUP-COUNT   PIC 9(02) COMP.
+           05  WS-DOUBLE-COLON-POS PIC 9(02) COMP.
+           05  WS-DEST-POS      PIC 9(02) COMP.
+           05  WS-HEX-VALUE     PIC 9(05) COMP.
+           05  WS-HEX-CHAR      PIC X(01).
+           05  WS-HEX-CHAR-VALUE PIC 9(02) COMP.
+           05  WS-HEX-BYTE-1    PIC X(01).
+           05  WS-HEX-BYTE-2    PIC X(01).
 
       ******************************************************************
       * UTILITY STATUS FLAGS
@@ -225,10 +233,24 @@
        PARSE-IPV6.
            SET UTIL-SUCCESS TO TRUE
            MOVE ALL X"00" TO WS-DEST-BLOCK
-      * Simplified IPv6 parsing - would need full implementation
-      * For now, just clear the block (placeholder)
-           MOVE "IPv6 parsing not fully implemented" 
-               TO WS-ERROR-MESSAGE
+           
+      * Check for IPv4-mapped IPv6 (e.g., ::ffff:192.0.2.1)
+           MOVE 0 TO WS-DOT-COUNT
+           PERFORM VARYING WS-I FROM 1 BY 1 
+                   UNTIL WS-I > FUNCTION LENGTH(
+                       FUNCTION TRIM(WS-IP-STRING))
+               IF WS-IP-STRING(WS-I:1) = '.'
+                   ADD 1 TO WS-DOT-COUNT
+               END-IF
+           END-PERFORM
+           
+           IF WS-DOT-COUNT > 0
+      * IPv4-mapped IPv6 address
+               PERFORM PARSE-IPV4-MAPPED-IPV6
+           ELSE
+      * Pure IPv6 address
+               PERFORM PARSE-PURE-IPV6
+           END-IF
            EXIT.
 
       ******************************************************************
@@ -481,6 +503,165 @@
            MOVE ALL X"00" TO WS-IP-WORK-AREA
            MOVE ALL X"00" TO WS-HEX-WORK-AREA
            MOVE ALL X"00" TO WS-BLOCK-WORK-AREA
+           EXIT.
+
+      ******************************************************************
+      * PARSE-IPV4-MAPPED-IPV6
+      * Parse IPv4-mapped IPv6 address (e.g., ::ffff:192.0.2.1)
+      ******************************************************************
+       PARSE-IPV4-MAPPED-IPV6.
+      * For simplicity, assume format is ::ffff:a.b.c.d
+      * Extract the IPv4 part and parse it
+           MOVE 0 TO WS-I
+           MOVE 0 TO WS-START-POS
+           
+      * Find the last colon before the IPv4 address
+           PERFORM VARYING WS-I FROM FUNCTION LENGTH(
+                   FUNCTION TRIM(WS-IP-STRING)) BY -1
+                   UNTIL WS-I < 1 OR WS-IP-STRING(WS-I:1) = ':'
+               CONTINUE
+           END-PERFORM
+           
+           IF WS-I > 0
+               ADD 1 TO WS-I
+               MOVE WS-IP-STRING(WS-I:) TO WS-IP-STRING
+               PERFORM PARSE-IPV4
+           ELSE
+               SET UTIL-INVALID-IP TO TRUE
+               MOVE "Invalid IPv4-mapped IPv6 format" 
+                   TO WS-ERROR-MESSAGE
+           END-IF
+           EXIT.
+
+      ******************************************************************
+      * PARSE-PURE-IPV6
+      * Parse pure IPv6 address
+      ******************************************************************
+       PARSE-PURE-IPV6.
+           SET UTIL-SUCCESS TO TRUE
+           MOVE ALL X"00" TO WS-DEST-BLOCK
+           
+      * Count groups and find :: position if present
+           MOVE 0 TO WS-GROUP-COUNT
+           MOVE 0 TO WS-DOUBLE-COLON-POS
+           MOVE 1 TO WS-START-POS
+           MOVE 0 TO WS-DEST-POS
+           
+      * Simple IPv6 parser - handles basic format
+      * For full implementation, would need to handle:
+      * - Zero compression (::)
+      * - Leading zeros omission
+      * - All valid IPv6 formats
+           
+           MOVE 1 TO WS-DEST-POS
+           MOVE 1 TO WS-START-POS
+           
+           PERFORM 8 TIMES
+               PERFORM FIND-NEXT-COLON
+               IF WS-END-POS > WS-START-POS
+                   COMPUTE WS-PART-LENGTH = WS-END-POS - WS-START-POS
+                   IF WS-PART-LENGTH > 4
+                       SET UTIL-INVALID-IP TO TRUE
+                       MOVE "Invalid IPv6 group" TO WS-ERROR-MESSAGE
+                       EXIT PERFORM
+                   END-IF
+                   
+      * Convert hex group to bytes
+                   MOVE WS-IP-STRING(WS-START-POS:WS-PART-LENGTH)
+                       TO WS-HEX-STRING
+                   PERFORM CONVERT-HEX-GROUP-TO-BYTES
+                   
+      * Store in destination block
+                   IF UTIL-SUCCESS
+                       MOVE WS-HEX-BYTE-1 TO 
+                           WS-DEST-BLOCK(WS-DEST-POS:1)
+                       ADD 1 TO WS-DEST-POS
+                       MOVE WS-HEX-BYTE-2 TO 
+                           WS-DEST-BLOCK(WS-DEST-POS:1)
+                       ADD 1 TO WS-DEST-POS
+                   END-IF
+                   
+                   MOVE WS-END-POS TO WS-START-POS
+                   ADD 1 TO WS-START-POS
+               END-IF
+               
+               IF WS-DEST-POS > 16
+                   EXIT PERFORM
+               END-IF
+           END-PERFORM
+           EXIT.
+
+      ******************************************************************
+      * FIND-NEXT-COLON
+      * Find position of next colon or end of string
+      ******************************************************************
+       FIND-NEXT-COLON.
+           MOVE WS-START-POS TO WS-END-POS
+           PERFORM UNTIL WS-END-POS > FUNCTION LENGTH(
+                   FUNCTION TRIM(WS-IP-STRING))
+                   OR WS-IP-STRING(WS-END-POS:1) = ':'
+               ADD 1 TO WS-END-POS
+           END-PERFORM
+           EXIT.
+
+      ******************************************************************
+      * CONVERT-HEX-GROUP-TO-BYTES
+      * Convert up to 4 hex digits to 2 bytes
+      ******************************************************************
+       CONVERT-HEX-GROUP-TO-BYTES.
+           MOVE 0 TO WS-HEX-VALUE
+           MOVE X"00" TO WS-HEX-BYTE-1
+           MOVE X"00" TO WS-HEX-BYTE-2
+           
+      * Parse hex digits
+           PERFORM VARYING WS-I FROM 1 BY 1 
+                   UNTIL WS-I > WS-PART-LENGTH
+               MOVE WS-HEX-STRING(WS-I:1) TO WS-HEX-CHAR
+               PERFORM CONVERT-SINGLE-HEX-CHAR
+               IF UTIL-SUCCESS
+                   COMPUTE WS-HEX-VALUE = WS-HEX-VALUE * 16 + 
+                           WS-HEX-CHAR-VALUE
+               ELSE
+                   EXIT PERFORM
+               END-IF
+           END-PERFORM
+           
+           IF UTIL-SUCCESS
+      * Split into two bytes (big-endian)
+               COMPUTE WS-BYTE-VAL = WS-HEX-VALUE / 256
+               MOVE FUNCTION CHAR(WS-BYTE-VAL + 1) TO WS-HEX-BYTE-1
+               COMPUTE WS-BYTE-VAL = FUNCTION MOD(WS-HEX-VALUE, 256)
+               MOVE FUNCTION CHAR(WS-BYTE-VAL + 1) TO WS-HEX-BYTE-2
+           END-IF
+           EXIT.
+
+      ******************************************************************
+      * CONVERT-SINGLE-HEX-CHAR
+      * Convert single hex character to numeric value
+      ******************************************************************
+       CONVERT-SINGLE-HEX-CHAR.
+           SET UTIL-SUCCESS TO TRUE
+           EVALUATE WS-HEX-CHAR
+               WHEN '0' MOVE 0 TO WS-HEX-CHAR-VALUE
+               WHEN '1' MOVE 1 TO WS-HEX-CHAR-VALUE
+               WHEN '2' MOVE 2 TO WS-HEX-CHAR-VALUE
+               WHEN '3' MOVE 3 TO WS-HEX-CHAR-VALUE
+               WHEN '4' MOVE 4 TO WS-HEX-CHAR-VALUE
+               WHEN '5' MOVE 5 TO WS-HEX-CHAR-VALUE
+               WHEN '6' MOVE 6 TO WS-HEX-CHAR-VALUE
+               WHEN '7' MOVE 7 TO WS-HEX-CHAR-VALUE
+               WHEN '8' MOVE 8 TO WS-HEX-CHAR-VALUE
+               WHEN '9' MOVE 9 TO WS-HEX-CHAR-VALUE
+               WHEN 'A' WHEN 'a' MOVE 10 TO WS-HEX-CHAR-VALUE
+               WHEN 'B' WHEN 'b' MOVE 11 TO WS-HEX-CHAR-VALUE
+               WHEN 'C' WHEN 'c' MOVE 12 TO WS-HEX-CHAR-VALUE
+               WHEN 'D' WHEN 'd' MOVE 13 TO WS-HEX-CHAR-VALUE
+               WHEN 'E' WHEN 'e' MOVE 14 TO WS-HEX-CHAR-VALUE
+               WHEN 'F' WHEN 'f' MOVE 15 TO WS-HEX-CHAR-VALUE
+               WHEN OTHER 
+                   SET UTIL-INVALID-HEX TO TRUE
+                   MOVE "Invalid hex character" TO WS-ERROR-MESSAGE
+           END-EVALUATE
            EXIT.
 
        END PROGRAM IPCRYPT-UTILS.
