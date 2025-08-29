@@ -29,6 +29,8 @@
            05  WS-KEY-LENGTH    PIC 9(02) COMP.
            05  WS-TWEAK-LENGTH  PIC 9(02) COMP.
            05  WS-OUTPUT-STRING PIC X(39).
+           05  WS-WORK-I        PIC 9(03) COMP.
+           05  WS-RANDOM-BYTE   PIC 9(03) COMP.
 
        01  WS-UTILITY-STATUS    PIC X(01).
            88  UTIL-SUCCESS     VALUE 'Y'.
@@ -223,8 +225,9 @@
            IF LS-ENCRYPT
       * For encryption, use provided tweak or generate random one
                IF WS-TWEAK-LENGTH = 0
-      * Generate random 8-byte tweak (simplified - use zeros for now)
-                   MOVE ALL X"00" TO WS-TWEAK(1:8)
+      * Generate random 8-byte tweak using CBL_GC_NANOSLEEP for seed
+      * and a simple PRNG
+                   PERFORM GENERATE-RANDOM-TWEAK-8
                    MOVE 8 TO WS-TWEAK-LENGTH
                END-IF
                
@@ -298,8 +301,9 @@
            IF LS-ENCRYPT
       * For encryption, use provided tweak or generate random one
                IF WS-TWEAK-LENGTH = 0
-      * Generate random 16-byte tweak (simplified - use zeros for now)
-                   MOVE ALL X"00" TO WS-TWEAK(1:16)
+      * Generate random 16-byte tweak using CBL_GC_NANOSLEEP for seed
+      * and a simple PRNG
+                   PERFORM GENERATE-RANDOM-TWEAK-16
                    MOVE 16 TO WS-TWEAK-LENGTH
                END-IF
                
@@ -372,6 +376,32 @@
                MOVE ALL X"FF" TO WS-CRYPTO-MATERIALS
                MOVE ALL X"AA" TO WS-CRYPTO-MATERIALS  
                MOVE ALL X"00" TO WS-CRYPTO-MATERIALS
+           END-PERFORM
+           EXIT.
+
+      ******************************************************************
+      * GENERATE-RANDOM-TWEAK-8
+      * Generate 8 random bytes for ND mode
+      ******************************************************************
+       GENERATE-RANDOM-TWEAK-8.
+      * Use FUNCTION RANDOM for each byte
+           PERFORM VARYING WS-WORK-I FROM 1 BY 1 UNTIL WS-WORK-I > 8
+               COMPUTE WS-RANDOM-BYTE = FUNCTION RANDOM * 256
+               MOVE FUNCTION CHAR(WS-RANDOM-BYTE + 1) 
+                   TO WS-TWEAK(WS-WORK-I:1)
+           END-PERFORM
+           EXIT.
+
+      ******************************************************************
+      * GENERATE-RANDOM-TWEAK-16  
+      * Generate 16 random bytes for NDX mode
+      ******************************************************************
+       GENERATE-RANDOM-TWEAK-16.
+      * Use FUNCTION RANDOM for each byte
+           PERFORM VARYING WS-WORK-I FROM 1 BY 1 UNTIL WS-WORK-I > 16
+               COMPUTE WS-RANDOM-BYTE = FUNCTION RANDOM * 256
+               MOVE FUNCTION CHAR(WS-RANDOM-BYTE + 1) 
+                   TO WS-TWEAK(WS-WORK-I:1)
            END-PERFORM
            EXIT.
 

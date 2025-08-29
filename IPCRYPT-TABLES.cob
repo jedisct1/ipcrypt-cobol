@@ -126,6 +126,8 @@
            05  WS-BIT-POS       PIC 9(03) COMP.
            05  WS-BIT-A         PIC 9(01) COMP.
            05  WS-BIT-B         PIC 9(01) COMP.
+           05  WS-RESULT-BYTE   PIC X(01).
+           05  WS-TEMP-BYTE-VAL PIC X(01).
 
       ******************************************************************
       * LINKAGE SECTION - For receiving parameters from callers
@@ -178,6 +180,26 @@
                WHEN 'GET-MUL3-VALUE'
                    MOVE LS-PARAM-1 TO WS-INPUT-BYTE
                    PERFORM GET-MUL3-VALUE-INTERNAL
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   
+               WHEN 'GET-MUL9-VALUE'
+                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   PERFORM GET-MUL9-VALUE-INTERNAL
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   
+               WHEN 'GET-MUL11-VALUE'
+                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   PERFORM GET-MUL11-VALUE-INTERNAL
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   
+               WHEN 'GET-MUL13-VALUE'
+                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   PERFORM GET-MUL13-VALUE-INTERNAL
+                   MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
+                   
+               WHEN 'GET-MUL14-VALUE'
+                   MOVE LS-PARAM-1 TO WS-INPUT-BYTE
+                   PERFORM GET-MUL14-VALUE-INTERNAL
                    MOVE WS-OUTPUT-BYTE TO LS-PARAM-2
                    
                WHEN OTHER
@@ -279,6 +301,112 @@
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            MOVE WS-INPUT-BYTE TO WS-BYTE-A
+           PERFORM XOR-BYTES-INTERNAL
+           MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
+           EXIT.
+
+      ******************************************************************
+      * GET-MUL9-VALUE-INTERNAL
+      * Multiply by 9 in GF(256) for Inverse MixColumns
+      ******************************************************************
+       GET-MUL9-VALUE-INTERNAL.
+      * 9 = 8 + 1 = x^3 + 1
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2 again (now x4)
+           MOVE WS-BYTE-A TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2 again (now x8)
+           MOVE WS-BYTE-A TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * XOR with original (8 + 1 = 9)
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           MOVE LS-PARAM-1 TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+           MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
+           EXIT.
+
+      ******************************************************************
+      * GET-MUL11-VALUE-INTERNAL
+      * Multiply by 11 (0x0B) in GF(256) for Inverse MixColumns
+      ******************************************************************
+       GET-MUL11-VALUE-INTERNAL.
+      * 11 = 8 + 2 + 1 = x^3 + x + 1
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-TEMP-BYTE-VAL
+      * Multiply by 2 again (now x4)
+           MOVE WS-TEMP-BYTE-VAL TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * Multiply by 2 again (now x8)
+           MOVE WS-OUTPUT-BYTE TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * XOR x8 with x2
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE-VAL TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+      * XOR with original
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           MOVE LS-PARAM-1 TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+           MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
+           EXIT.
+
+      ******************************************************************
+      * GET-MUL13-VALUE-INTERNAL
+      * Multiply by 13 (0x0D) in GF(256) for Inverse MixColumns
+      ******************************************************************
+       GET-MUL13-VALUE-INTERNAL.
+      * 13 = 8 + 4 + 1 = x^3 + x^2 + 1
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * Multiply by 2 again (now x4)
+           MOVE WS-OUTPUT-BYTE TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-TEMP-BYTE-VAL
+      * Multiply by 2 again (now x8)
+           MOVE WS-TEMP-BYTE-VAL TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * XOR x8 with x4
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE-VAL TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+      * XOR with original
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           MOVE LS-PARAM-1 TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+           MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
+           EXIT.
+
+      ******************************************************************
+      * GET-MUL14-VALUE-INTERNAL
+      * Multiply by 14 (0x0E) in GF(256) for Inverse MixColumns
+      ******************************************************************
+       GET-MUL14-VALUE-INTERNAL.
+      * 14 = 8 + 4 + 2 = x^3 + x^2 + x
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
+      * Multiply by 2
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-TEMP-BYTE-VAL
+      * Multiply by 2 again (now x4)
+           MOVE WS-TEMP-BYTE-VAL TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+           MOVE WS-OUTPUT-BYTE TO WS-RESULT-BYTE
+      * Multiply by 2 again (now x8)
+           MOVE WS-RESULT-BYTE TO WS-INPUT-BYTE
+           PERFORM GET-MUL2-VALUE-INTERNAL
+      * XOR x8 with x4
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           MOVE WS-RESULT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES-INTERNAL
+      * XOR with x2
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           MOVE WS-TEMP-BYTE-VAL TO WS-BYTE-B
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.

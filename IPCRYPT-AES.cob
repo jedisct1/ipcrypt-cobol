@@ -412,11 +412,110 @@
       ******************************************************************
       * INV-MIX-SINGLE-COLUMN
       * Inverse mix single column using GF multiplication
+      * Matrix: [14 11 13  9]
+      *         [ 9 14 11 13]
+      *         [13  9 14 11]
+      *         [11 13  9 14]
       ******************************************************************
        INV-MIX-SINGLE-COLUMN.
-      * Uses multiplication by 9, 11, 13, 14 from tables
-      * Would implement similar to MIX-SINGLE-COLUMN but with 
-      * inverse matrix
+      * Save original column
+           MOVE WS-STATE-BYTE(1, WS-J) TO WS-TEMP-BYTE(1, 1)
+           MOVE WS-STATE-BYTE(2, WS-J) TO WS-TEMP-BYTE(1, 2)
+           MOVE WS-STATE-BYTE(3, WS-J) TO WS-TEMP-BYTE(1, 3)
+           MOVE WS-STATE-BYTE(4, WS-J) TO WS-TEMP-BYTE(1, 4)
+           
+      * First row: 14*s0 + 11*s1 + 13*s2 + 9*s3
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           PERFORM GET-MUL14-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           PERFORM GET-MUL11-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL13-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL9-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(1, WS-J)
+           
+      * Second row: 9*s0 + 14*s1 + 11*s2 + 13*s3
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           PERFORM GET-MUL9-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           PERFORM GET-MUL14-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL11-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL13-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(2, WS-J)
+           
+      * Third row: 13*s0 + 9*s1 + 14*s2 + 11*s3
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           PERFORM GET-MUL13-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           PERFORM GET-MUL9-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL14-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL11-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(3, WS-J)
+           
+      * Fourth row: 11*s0 + 13*s1 + 9*s2 + 14*s3
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           PERFORM GET-MUL11-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           PERFORM GET-MUL13-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           PERFORM GET-MUL9-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-BYTE-A
+           
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           PERFORM GET-MUL14-VALUE
+           MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           PERFORM XOR-BYTES
+           MOVE WS-XOR-BYTE TO WS-STATE-BYTE(4, WS-J)
+           
            EXIT.
 
       ******************************************************************
@@ -452,6 +551,26 @@
                
        GET-MUL3-VALUE.
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL3-VALUE'
+               WS-INPUT-BYTE WS-OUTPUT-BYTE
+           EXIT.
+               
+       GET-MUL9-VALUE.
+           CALL 'IPCRYPT-TABLES' USING 'GET-MUL9-VALUE'
+               WS-INPUT-BYTE WS-OUTPUT-BYTE
+           EXIT.
+               
+       GET-MUL11-VALUE.
+           CALL 'IPCRYPT-TABLES' USING 'GET-MUL11-VALUE'
+               WS-INPUT-BYTE WS-OUTPUT-BYTE
+           EXIT.
+               
+       GET-MUL13-VALUE.
+           CALL 'IPCRYPT-TABLES' USING 'GET-MUL13-VALUE'
+               WS-INPUT-BYTE WS-OUTPUT-BYTE
+           EXIT.
+               
+       GET-MUL14-VALUE.
+           CALL 'IPCRYPT-TABLES' USING 'GET-MUL14-VALUE'
                WS-INPUT-BYTE WS-OUTPUT-BYTE
            EXIT.
                
