@@ -212,7 +212,7 @@
                            WHEN 0
                                MOVE X"00" TO WS-DEST-BLOCK(WS-I:1)
                            WHEN OTHER
-                               MOVE FUNCTION CHAR(WS-NUMERIC-PART + 1) 
+                               MOVE FUNCTION CHAR(WS-NUMERIC-PART) 
                                     TO WS-DEST-BLOCK(WS-I:1)
                        END-EVALUATE
                        ADD 1 TO WS-K
@@ -447,7 +447,7 @@
                    MOVE 0 TO WS-NUMERIC-PART
                ELSE
                    COMPUTE WS-NUMERIC-PART = 
-                       FUNCTION ORD(WS-DEST-BLOCK(WS-I:1)) - 1
+                       FUNCTION ORD(WS-DEST-BLOCK(WS-I:1))
                END-IF
                PERFORM APPEND-DECIMAL-TO-STRING
                IF WS-I < 16

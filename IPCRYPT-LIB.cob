@@ -195,31 +195,29 @@
            
       * Perform AES-128 encryption or decryption
            IF LS-ENCRYPT
-      * Use working AES-XTS-ENCRYPT with zero tweak (same as NDX)
-               MOVE 'AES-XTS-ENCRYPT' TO WS-CALL-FUNCTION
+      * Use AES-ENCRYPT-BLOCK for deterministic mode
+               MOVE 'AES-ENCRYPT-BLOCK' TO WS-CALL-FUNCTION
                MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1(1:16)
                MOVE WS-KEY-128 TO WS-CALL-PARAM-2(1:16)
-               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(17:16)
-               MOVE SPACES TO WS-CALL-PARAM-3(1:16)
+               MOVE SPACES TO WS-CALL-PARAM-3
                MOVE SPACES TO WS-CALL-PARAM-4
                CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
                    WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
                    WS-CALL-PARAM-4
                END-CALL
-               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
+               MOVE WS-CALL-PARAM-1(1:16) TO WS-OUTPUT-BLOCK
            ELSE
-      * Use working AES-XTS-DECRYPT with zero tweak (same as NDX)
-               MOVE 'AES-XTS-DECRYPT' TO WS-CALL-FUNCTION
+      * Use AES-DECRYPT-BLOCK for deterministic mode
+               MOVE 'AES-DECRYPT-BLOCK' TO WS-CALL-FUNCTION
                MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1(1:16)
                MOVE WS-KEY-128 TO WS-CALL-PARAM-2(1:16)
-               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(17:16)
-               MOVE SPACES TO WS-CALL-PARAM-3(1:16)
+               MOVE SPACES TO WS-CALL-PARAM-3
                MOVE SPACES TO WS-CALL-PARAM-4
                CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
                    WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
                    WS-CALL-PARAM-4
                END-CALL
-               MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
+               MOVE WS-CALL-PARAM-1(1:16) TO WS-OUTPUT-BLOCK
            END-IF
            
            
