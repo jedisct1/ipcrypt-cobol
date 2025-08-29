@@ -20,13 +20,11 @@
            05  WS-STATE-MATRIX  OCCURS 4 TIMES.
                10  WS-STATE-BYTE OCCURS 4 TIMES PIC X(01).
 
-       01  WS-AES-STATE-FLAT REDEFINES WS-AES-STATE PIC X(16).
+       01  WS-AES-STATE-FLAT PIC X(16).
 
        01  WS-TEMP-STATE.
            05  WS-TEMP-MATRIX   OCCURS 4 TIMES.
                10  WS-TEMP-BYTE OCCURS 4 TIMES PIC X(01).
-
-       01  WS-TEMP-STATE-FLAT REDEFINES WS-TEMP-STATE PIC X(16).
 
       ******************************************************************
       * KEY STRUCTURES
@@ -55,6 +53,7 @@
            05  WS-TEMP-WORD     PIC X(04).
            05  WS-INPUT-BYTE    PIC 9(03) COMP.
            05  WS-OUTPUT-BYTE   PIC X(01).
+           05  WS-PARAM-BYTE    PIC X(01).
            05  WS-BYTE-A        PIC X(01).
            05  WS-BYTE-B        PIC X(01).
            05  WS-XOR-BYTE      PIC X(01).
@@ -91,6 +90,15 @@
        01  WS-FUNCTION-NAMES.
            05  WS-FUNC-PAD-TWEAK    PIC X(30) VALUE
                "PAD-TWEAK-8TO16               ".
+               
+      * Variables for IPCRYPT-UTILS calls
+       01  WS-CALL-FUNCTION     PIC X(30).
+       01  WS-CALL-PARAM-1      PIC X(64).
+       01  WS-CALL-PARAM-2      PIC X(64).
+       01  WS-CALL-PARAM-3      PIC X(64).
+       01  WS-UTIL-STATUS       PIC X(01).
+           88  UTIL-SUCCESS     VALUE 'Y'.
+           88  UTIL-ERROR       VALUE 'N'.
 
       ******************************************************************
       * LINKAGE SECTION - For receiving parameters from callers
@@ -105,7 +113,8 @@
        PROCEDURE DIVISION USING LS-FUNCTION-NAME
                                LS-PARAM-1
                                LS-PARAM-2
-                               LS-PARAM-3.
+                               LS-PARAM-3
+                               LS-PARAM-4.
 
       ******************************************************************
       * MAIN-DISPATCHER
@@ -113,19 +122,24 @@
       ******************************************************************
        MAIN-DISPATCHER.
            SET AES-SUCCESS TO TRUE
+           PERFORM INITIALIZE-AES
+           
+           DISPLAY "DEBUG: Received function name: [" 
+               LS-FUNCTION-NAME "]"
            
            EVALUATE LS-FUNCTION-NAME
                WHEN 'AES-ENCRYPT-BLOCK'
-                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
+      * Simple AES-128 ECB encryption for deterministic mode
                    MOVE LS-PARAM-2(1:16) TO WS-MASTER-KEY
+                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
                    PERFORM AES-ENCRYPT-BLOCK-INTERNAL
-                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2(1:16)
+                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-1(1:16)
                    
                WHEN 'AES-DECRYPT-BLOCK'
-                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
                    MOVE LS-PARAM-2(1:16) TO WS-MASTER-KEY
+                   MOVE LS-PARAM-1(1:16) TO WS-AES-STATE-FLAT
                    PERFORM AES-DECRYPT-BLOCK-INTERNAL
-                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-2(1:16)
+                   MOVE WS-AES-STATE-FLAT TO LS-PARAM-1(1:16)
                    
                WHEN 'KIASU-BC-ENCRYPT'
                    MOVE LS-PARAM-1(1:16) TO WS-INPUT-BLOCK
@@ -170,6 +184,8 @@
            MOVE ALL X"00" TO WS-AES-STATE
            MOVE ALL X"00" TO WS-ROUND-KEYS
            CALL 'IPCRYPT-TABLES' USING 'INITIALIZE-TABLES'
+               SPACES SPACES SPACES
+           END-CALL
            EXIT.
 
       ******************************************************************
@@ -247,11 +263,58 @@
        SUB-WORD.
            PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
                COMPUTE WS-INPUT-BYTE = FUNCTION ORD(
-                   WS-TEMP-KEY-WORD(WS-J:1))
+                   WS-TEMP-KEY-WORD(WS-J:1)) - 1
                PERFORM GET-SBOX-VALUE
                MOVE WS-OUTPUT-BYTE TO WS-SUB-WORD(WS-J:1)
            END-PERFORM
            MOVE WS-SUB-WORD TO WS-TEMP-KEY-WORD
+           EXIT.
+
+      ******************************************************************
+      * CONVERT-FLAT-TO-MATRIX
+      * Convert flat array to column-major matrix for AES
+      ******************************************************************
+       CONVERT-FLAT-TO-MATRIX.
+      * AES uses column-major order: flat[0] -> matrix[0][0], flat[1] -> matrix[1][0], etc.
+           MOVE WS-AES-STATE-FLAT(1:1) TO WS-STATE-BYTE(1, 1)
+           MOVE WS-AES-STATE-FLAT(2:1) TO WS-STATE-BYTE(2, 1)
+           MOVE WS-AES-STATE-FLAT(3:1) TO WS-STATE-BYTE(3, 1)
+           MOVE WS-AES-STATE-FLAT(4:1) TO WS-STATE-BYTE(4, 1)
+           MOVE WS-AES-STATE-FLAT(5:1) TO WS-STATE-BYTE(1, 2)
+           MOVE WS-AES-STATE-FLAT(6:1) TO WS-STATE-BYTE(2, 2)
+           MOVE WS-AES-STATE-FLAT(7:1) TO WS-STATE-BYTE(3, 2)
+           MOVE WS-AES-STATE-FLAT(8:1) TO WS-STATE-BYTE(4, 2)
+           MOVE WS-AES-STATE-FLAT(9:1) TO WS-STATE-BYTE(1, 3)
+           MOVE WS-AES-STATE-FLAT(10:1) TO WS-STATE-BYTE(2, 3)
+           MOVE WS-AES-STATE-FLAT(11:1) TO WS-STATE-BYTE(3, 3)
+           MOVE WS-AES-STATE-FLAT(12:1) TO WS-STATE-BYTE(4, 3)
+           MOVE WS-AES-STATE-FLAT(13:1) TO WS-STATE-BYTE(1, 4)
+           MOVE WS-AES-STATE-FLAT(14:1) TO WS-STATE-BYTE(2, 4)
+           MOVE WS-AES-STATE-FLAT(15:1) TO WS-STATE-BYTE(3, 4)
+           MOVE WS-AES-STATE-FLAT(16:1) TO WS-STATE-BYTE(4, 4)
+           EXIT.
+
+      ******************************************************************
+      * CONVERT-MATRIX-TO-FLAT
+      * Convert column-major matrix back to flat array
+      ******************************************************************
+       CONVERT-MATRIX-TO-FLAT.
+           MOVE WS-STATE-BYTE(1, 1) TO WS-AES-STATE-FLAT(1:1)
+           MOVE WS-STATE-BYTE(2, 1) TO WS-AES-STATE-FLAT(2:1)
+           MOVE WS-STATE-BYTE(3, 1) TO WS-AES-STATE-FLAT(3:1)
+           MOVE WS-STATE-BYTE(4, 1) TO WS-AES-STATE-FLAT(4:1)
+           MOVE WS-STATE-BYTE(1, 2) TO WS-AES-STATE-FLAT(5:1)
+           MOVE WS-STATE-BYTE(2, 2) TO WS-AES-STATE-FLAT(6:1)
+           MOVE WS-STATE-BYTE(3, 2) TO WS-AES-STATE-FLAT(7:1)
+           MOVE WS-STATE-BYTE(4, 2) TO WS-AES-STATE-FLAT(8:1)
+           MOVE WS-STATE-BYTE(1, 3) TO WS-AES-STATE-FLAT(9:1)
+           MOVE WS-STATE-BYTE(2, 3) TO WS-AES-STATE-FLAT(10:1)
+           MOVE WS-STATE-BYTE(3, 3) TO WS-AES-STATE-FLAT(11:1)
+           MOVE WS-STATE-BYTE(4, 3) TO WS-AES-STATE-FLAT(12:1)
+           MOVE WS-STATE-BYTE(1, 4) TO WS-AES-STATE-FLAT(13:1)
+           MOVE WS-STATE-BYTE(2, 4) TO WS-AES-STATE-FLAT(14:1)
+           MOVE WS-STATE-BYTE(3, 4) TO WS-AES-STATE-FLAT(15:1)
+           MOVE WS-STATE-BYTE(4, 4) TO WS-AES-STATE-FLAT(16:1)
            EXIT.
 
       ******************************************************************
@@ -260,21 +323,64 @@
       ******************************************************************
        AES-ENCRYPT-BLOCK-INTERNAL.
            SET AES-SUCCESS TO TRUE
+           
+      * Debug: Show input data
+           DISPLAY "DEBUG AES-ENCRYPT: Input first 4 bytes:"
+           DISPLAY "  Byte 1: " FUNCTION ORD(WS-AES-STATE-FLAT(1:1))
+           DISPLAY "  Byte 2: " FUNCTION ORD(WS-AES-STATE-FLAT(2:1))
+           DISPLAY "  Byte 3: " FUNCTION ORD(WS-AES-STATE-FLAT(3:1))
+           DISPLAY "  Byte 4: " FUNCTION ORD(WS-AES-STATE-FLAT(4:1))
+           
            PERFORM AES-KEY-EXPANSION
+           
+      * Convert flat input to column-major matrix
+           PERFORM CONVERT-FLAT-TO-MATRIX
+           
+      * Debug: Show state after conversion
+           DISPLAY "DEBUG: State after flat->matrix:"
+           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
+           DISPLAY "  [2,1]: " FUNCTION ORD(WS-STATE-BYTE(2,1))
+           DISPLAY "  [1,2]: " FUNCTION ORD(WS-STATE-BYTE(1,2))
            
       * Initial round key addition
            MOVE 1 TO WS-ROUND
            PERFORM ADD-ROUND-KEY
            
+      * Debug: After initial AddRoundKey
+           DISPLAY "DEBUG: After initial AddRoundKey:"
+           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
+           
       * Main rounds (1-9)
+           DISPLAY "DEBUG: Before loop, WS-ROUND = " WS-ROUND
+           DISPLAY "DEBUG: Starting main rounds loop"
            PERFORM VARYING WS-ROUND FROM 2 BY 1 UNTIL WS-ROUND > 10
+               DISPLAY "DEBUG: Round " WS-ROUND
                PERFORM SUB-BYTES
+               IF WS-ROUND = 2
+                   DISPLAY "DEBUG: After first SubBytes:"
+                   DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
+               END-IF
                PERFORM SHIFT-ROWS
                IF WS-ROUND < 10
                    PERFORM MIX-COLUMNS
                END-IF
                PERFORM ADD-ROUND-KEY
            END-PERFORM
+           
+      * Debug: Show final state before conversion
+           DISPLAY "DEBUG: Final state before matrix->flat:"
+           DISPLAY "  [1,1]: " FUNCTION ORD(WS-STATE-BYTE(1,1))
+           DISPLAY "  [2,1]: " FUNCTION ORD(WS-STATE-BYTE(2,1))
+           
+      * Convert matrix back to flat output
+           PERFORM CONVERT-MATRIX-TO-FLAT
+           
+      * Debug: Show output
+           DISPLAY "DEBUG: Final output first 4 bytes:"
+           DISPLAY "  Byte 1: " FUNCTION ORD(WS-AES-STATE-FLAT(1:1))
+           DISPLAY "  Byte 2: " FUNCTION ORD(WS-AES-STATE-FLAT(2:1))
+           DISPLAY "  Byte 3: " FUNCTION ORD(WS-AES-STATE-FLAT(3:1))
+           DISPLAY "  Byte 4: " FUNCTION ORD(WS-AES-STATE-FLAT(4:1))
            EXIT.
 
       ******************************************************************
@@ -284,6 +390,9 @@
        AES-DECRYPT-BLOCK-INTERNAL.
            SET AES-SUCCESS TO TRUE
            PERFORM AES-KEY-EXPANSION
+           
+      * Convert flat input to column-major matrix
+           PERFORM CONVERT-FLAT-TO-MATRIX
            
       * Initial round key addition
            MOVE 11 TO WS-ROUND
@@ -298,6 +407,9 @@
                    PERFORM INV-MIX-COLUMNS
                END-IF
            END-PERFORM
+           
+      * Convert matrix back to flat output
+           PERFORM CONVERT-MATRIX-TO-FLAT
            EXIT.
 
       ******************************************************************
@@ -305,10 +417,12 @@
       * Apply S-Box substitution to state
       ******************************************************************
        SUB-BYTES.
+           DISPLAY "DEBUG: SUB-BYTES called"
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 4
                PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
                    COMPUTE WS-INPUT-BYTE = FUNCTION ORD(
-                       WS-STATE-BYTE(WS-I, WS-J))
+                       WS-STATE-BYTE(WS-I, WS-J)) - 1
+                   DISPLAY "DEBUG: Calling GET-SBOX for [" WS-I "," WS-J "]"
                    PERFORM GET-SBOX-VALUE
                    MOVE WS-OUTPUT-BYTE TO WS-STATE-BYTE(WS-I, WS-J)
                END-PERFORM
@@ -323,7 +437,7 @@
            PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 4
                PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
                    COMPUTE WS-INPUT-BYTE = FUNCTION ORD(
-                       WS-STATE-BYTE(WS-I, WS-J))
+                       WS-STATE-BYTE(WS-I, WS-J)) - 1
                    PERFORM GET-INV-SBOX-VALUE
                    MOVE WS-OUTPUT-BYTE TO WS-STATE-BYTE(WS-I, WS-J)
                END-PERFORM
@@ -401,10 +515,10 @@
            
       * Apply MixColumns matrix multiplication
       * First row: 2*s0 + 3*s1 + 1*s2 + 1*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL2-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL3-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
@@ -418,12 +532,12 @@
            
       * Second row: 1*s0 + 2*s1 + 3*s2 + 1*s3
            MOVE WS-TEMP-BYTE(1,1) TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL2-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL3-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
@@ -437,19 +551,19 @@
            MOVE WS-TEMP-BYTE(1,2) TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL2-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL3-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-STATE-BYTE(3, WS-J)
            
       * Fourth row: 3*s0 + 1*s1 + 1*s2 + 2*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL3-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
            MOVE WS-TEMP-BYTE(1,2) TO WS-BYTE-B
@@ -458,7 +572,7 @@
            MOVE WS-TEMP-BYTE(1,3) TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL2-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
@@ -492,92 +606,92 @@
            MOVE WS-STATE-BYTE(4, WS-J) TO WS-TEMP-BYTE(1, 4)
            
       * First row: 14*s0 + 11*s1 + 13*s2 + 9*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL14-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL11-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL13-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL9-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-STATE-BYTE(1, WS-J)
            
       * Second row: 9*s0 + 14*s1 + 11*s2 + 13*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL9-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL14-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL11-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL13-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-STATE-BYTE(2, WS-J)
            
       * Third row: 13*s0 + 9*s1 + 14*s2 + 11*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL13-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL9-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL14-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL11-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-STATE-BYTE(3, WS-J)
            
       * Fourth row: 11*s0 + 13*s1 + 9*s2 + 14*s3
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,1)) - 1
            PERFORM GET-MUL11-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,2)) - 1
            PERFORM GET-MUL13-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,3)) - 1
            PERFORM GET-MUL9-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
            MOVE WS-XOR-BYTE TO WS-BYTE-A
            
-           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4))
+           COMPUTE WS-INPUT-BYTE = FUNCTION ORD(WS-TEMP-BYTE(1,4)) - 1
            PERFORM GET-MUL14-VALUE
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
            PERFORM XOR-BYTES
@@ -590,11 +704,17 @@
       * XOR state with round key
       ******************************************************************
        ADD-ROUND-KEY.
-           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 16
-               MOVE WS-AES-STATE-FLAT(WS-I:1) TO WS-BYTE-A
-               MOVE WS-ROUND-KEY-ENTRY(WS-ROUND)(WS-I:1) TO WS-BYTE-B
-               PERFORM XOR-BYTES
-               MOVE WS-XOR-BYTE TO WS-AES-STATE-FLAT(WS-I:1)
+      * XOR state matrix with round key (column-major order)
+           MOVE 0 TO WS-K
+           PERFORM VARYING WS-J FROM 1 BY 1 UNTIL WS-J > 4
+               PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 4
+                   ADD 1 TO WS-K
+                   MOVE WS-STATE-BYTE(WS-I, WS-J) TO WS-BYTE-A
+                   MOVE WS-ROUND-KEY-ENTRY(WS-ROUND) TO WS-KEY-128
+                   MOVE WS-KEY-128(WS-K:1) TO WS-BYTE-B
+                   PERFORM XOR-BYTES
+                   MOVE WS-XOR-BYTE TO WS-STATE-BYTE(WS-I, WS-J)
+               END-PERFORM
            END-PERFORM
            EXIT.
 
@@ -602,53 +722,133 @@
       * HELPER FUNCTIONS - Call IPCRYPT-TABLES functions
       ******************************************************************
        GET-SBOX-VALUE.
+           DISPLAY "DEBUG AES: GET-SBOX called with " WS-INPUT-BYTE
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-SBOX-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
+           DISPLAY "DEBUG AES: SBOX returned " 
+               FUNCTION ORD(WS-OUTPUT-BYTE)
            EXIT.
            
        GET-INV-SBOX-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-INV-SBOX-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL2-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL2-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL3-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL3-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL9-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL9-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL11-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL11-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL13-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL13-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        GET-MUL14-VALUE.
+           EVALUATE WS-INPUT-BYTE
+               WHEN 0
+                   MOVE X"00" TO WS-PARAM-BYTE
+               WHEN OTHER
+                   MOVE FUNCTION CHAR(WS-INPUT-BYTE) 
+                       TO WS-PARAM-BYTE
+           END-EVALUATE
            CALL 'IPCRYPT-TABLES' USING 'GET-MUL14-VALUE'
-               WS-INPUT-BYTE WS-OUTPUT-BYTE
+               WS-PARAM-BYTE WS-OUTPUT-BYTE SPACES
+           END-CALL
            EXIT.
                
        XOR-BYTES.
+           MOVE SPACES TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           MOVE WS-BYTE-A TO WS-CALL-PARAM-1(1:1)
+           MOVE WS-BYTE-B TO WS-CALL-PARAM-2(1:1)
            CALL 'IPCRYPT-TABLES' USING 'XOR-BYTES'
-               WS-BYTE-A WS-BYTE-B WS-XOR-BYTE
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:1) TO WS-XOR-BYTE
            EXIT.
                
        GET-RCON-VALUE.
+           MOVE SPACES TO WS-CALL-PARAM-1
+           MOVE SPACES TO WS-CALL-PARAM-2
+           MOVE SPACES TO WS-CALL-PARAM-3
+           MOVE FUNCTION CHAR(WS-BYTE-INDEX) TO WS-CALL-PARAM-1(1:1)
            CALL 'IPCRYPT-TABLES' USING 'GET-RCON-VALUE'
-               WS-BYTE-INDEX WS-RCON-VAL
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:1) TO WS-RCON-VAL
            EXIT.
 
       ******************************************************************
@@ -682,8 +882,13 @@
            SET AES-SUCCESS TO TRUE
            
       * Pad 8-byte tweak to 16 bytes
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-PAD-TWEAK
-               WS-TWEAK-8 WS-TWEAK-16
+           MOVE 'PAD-TWEAK-8TO16' TO WS-CALL-FUNCTION
+           MOVE WS-TWEAK-8 TO WS-CALL-PARAM-1
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+               WS-UTIL-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:16) TO WS-TWEAK-16
                
       * Copy input parameters
            MOVE WS-INPUT-BLOCK TO WS-AES-STATE-FLAT
@@ -702,8 +907,10 @@
                PERFORM SHIFT-ROWS
                PERFORM MIX-COLUMNS
                ADD 1 TO WS-ROUND
+               END-ADD
                PERFORM KIASU-BC-ADD-ROUND-KEY
                SUBTRACT 1 FROM WS-ROUND
+               END-SUBTRACT
            END-PERFORM
            
       * Final round (10)
@@ -744,8 +951,13 @@
            SET AES-SUCCESS TO TRUE
            
       * Pad 8-byte tweak to 16 bytes
-           CALL 'IPCRYPT-UTILS' USING WS-FUNC-PAD-TWEAK
-               WS-TWEAK-8 WS-TWEAK-16
+           MOVE 'PAD-TWEAK-8TO16' TO WS-CALL-FUNCTION
+           MOVE WS-TWEAK-8 TO WS-CALL-PARAM-1
+           CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
+               WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+               WS-UTIL-STATUS
+           END-CALL
+           MOVE WS-CALL-PARAM-2(1:16) TO WS-TWEAK-16
                
       * Copy input parameters
            MOVE WS-INPUT-BLOCK TO WS-AES-STATE-FLAT

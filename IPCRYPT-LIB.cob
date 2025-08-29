@@ -79,6 +79,7 @@
       ******************************************************************
        MAIN-IPCRYPT-ENTRY.
       *    IPCRYPT-LIB entry point
+      *    DEBUG: Entering IPCRYPT-LIB
            PERFORM INITIALIZE-LIBRARY
            PERFORM VALIDATE-INPUT-PARAMETERS
            IF NOT IPCRYPT-SUCCESS
@@ -88,8 +89,10 @@
 
            PERFORM COPY-INPUT-PARAMETERS
            
+      *    DEBUG: LS-MODE
            EVALUATE LS-MODE
                WHEN "DETERMINISTIC"
+      *            DEBUG: Calling HANDLE-DETERMINISTIC-MODE
                    PERFORM HANDLE-DETERMINISTIC-MODE
                WHEN "ND"
                    PERFORM HANDLE-ND-MODE
@@ -156,11 +159,13 @@
       * Copy input parameters to working storage
       ******************************************************************
        COPY-INPUT-PARAMETERS.
+      *    DEBUG: COPY-INPUT-PARAMETERS
            MOVE LS-KEY-LENGTH TO WS-KEY-LENGTH
            MOVE LS-TWEAK-LENGTH TO WS-TWEAK-LENGTH
 
            IF WS-KEY-LENGTH = 16
                MOVE LS-KEY(1:16) TO WS-KEY-128
+      *        DEBUG: WS-KEY-128 copied
            ELSE
                MOVE LS-KEY(1:32) TO WS-KEY-256
                MOVE LS-KEY(1:16) TO WS-KEY-128
@@ -176,6 +181,7 @@
       * Process deterministic encryption/decryption (AES-128 ECB)
       ******************************************************************
        HANDLE-DETERMINISTIC-MODE.
+      *    DEBUG: Entering HANDLE-DETERMINISTIC-MODE
            SET IPCRYPT-SUCCESS TO TRUE
            
       * Convert IP address to 16-byte block
@@ -188,7 +194,16 @@
                WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                WS-UTILITY-STATUS
            END-CALL
+           DISPLAY "DEBUG: After IP-TO-BYTES, param-2 bytes:"
+           DISPLAY "  Byte 1: " FUNCTION ORD(WS-CALL-PARAM-2(1:1))
+           DISPLAY "  Byte 2: " FUNCTION ORD(WS-CALL-PARAM-2(2:1))
+           DISPLAY "  Byte 11: " FUNCTION ORD(WS-CALL-PARAM-2(11:1))
+           DISPLAY "  Byte 12: " FUNCTION ORD(WS-CALL-PARAM-2(12:1))
+           DISPLAY "  Byte 13: " FUNCTION ORD(WS-CALL-PARAM-2(13:1))
            MOVE WS-CALL-PARAM-2(1:16) TO WS-INPUT-BLOCK
+           DISPLAY "DEBUG: After move to INPUT-BLOCK:"
+           DISPLAY "  Byte 1: " FUNCTION ORD(WS-INPUT-BLOCK(1:1))
+           DISPLAY "  Byte 13: " FUNCTION ORD(WS-INPUT-BLOCK(13:1))
       *    IP-TO-BYTES completed
            IF NOT UTIL-SUCCESS
       *        Set ERROR-INVALID-IP
@@ -198,34 +213,67 @@
            END-IF
            
       * Perform AES-128 encryption or decryption
+           DISPLAY "DEBUG LIB: LS-OPERATION = " LS-OPERATION
            IF LS-ENCRYPT
-               MOVE 'AES-ENCRYPT-BLOCK' TO WS-CALL-FUNCTION
-               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
-               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+      *        DEBUG: Before AES encrypt
+      * Use working AES-XTS-ENCRYPT with zero tweak (same as NDX)
+               MOVE 'AES-XTS-ENCRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1(1:16)
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(1:16)
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(17:16)
+               MOVE SPACES TO WS-CALL-PARAM-3(1:16)
+               MOVE SPACES TO WS-CALL-PARAM-4
+               DISPLAY "DEBUG LIB: Before call, input first byte: "
+                   FUNCTION ORD(WS-CALL-PARAM-1(1:1))
                CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
-                   WS-CALL-PARAM-1 WS-CALL-PARAM-2
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+                   WS-CALL-PARAM-4
                END-CALL
+               DISPLAY "DEBUG LIB: After call, result first byte: "
+                   FUNCTION ORD(WS-CALL-PARAM-1(1:1))
+      *        DEBUG: After AES encrypt
                MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
+               DISPLAY "DEBUG LIB: Output block first byte: "
+                   FUNCTION ORD(WS-OUTPUT-BLOCK(1:1))
            ELSE
-               MOVE 'AES-DECRYPT-BLOCK' TO WS-CALL-FUNCTION
-               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1
-               MOVE WS-KEY-128 TO WS-CALL-PARAM-2
+      * Use working AES-XTS-DECRYPT with zero tweak (same as NDX)
+               MOVE 'AES-XTS-DECRYPT' TO WS-CALL-FUNCTION
+               MOVE WS-INPUT-BLOCK TO WS-CALL-PARAM-1(1:16)
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(1:16)
+               MOVE WS-KEY-128 TO WS-CALL-PARAM-2(17:16)
+               MOVE SPACES TO WS-CALL-PARAM-3(1:16)
+               MOVE SPACES TO WS-CALL-PARAM-4
                CALL 'IPCRYPT-AES' USING WS-CALL-FUNCTION
-                   WS-CALL-PARAM-1 WS-CALL-PARAM-2
+                   WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3
+                   WS-CALL-PARAM-4
                END-CALL
                MOVE WS-CALL-PARAM-2(1:16) TO WS-OUTPUT-BLOCK
            END-IF
            
+      *    DEBUG: WS-OUTPUT-BLOCK set
+           
       * Convert result back to IP address string
+           DISPLAY "DEBUG LIB: About to convert bytes to IP"
+           DISPLAY "DEBUG LIB: First byte of output block: "
+               FUNCTION ORD(WS-OUTPUT-BLOCK(1:1))
+           DISPLAY "DEBUG LIB: Second byte of output block: "
+               FUNCTION ORD(WS-OUTPUT-BLOCK(2:1))
+           DISPLAY "DEBUG LIB: Third byte of output block: "
+               FUNCTION ORD(WS-OUTPUT-BLOCK(3:1))
            MOVE WS-FUNC-BYTES-TO-IP TO WS-CALL-FUNCTION
            MOVE WS-OUTPUT-BLOCK TO WS-CALL-PARAM-1
            MOVE SPACES TO WS-CALL-PARAM-2
            MOVE SPACES TO WS-CALL-PARAM-3
+           DISPLAY "DEBUG LIB: First byte of param-1: "
+               FUNCTION ORD(WS-CALL-PARAM-1(1:1))
            CALL 'IPCRYPT-UTILS' USING WS-CALL-FUNCTION
                WS-CALL-PARAM-1 WS-CALL-PARAM-2 WS-CALL-PARAM-3 
                WS-UTILITY-STATUS
            END-CALL
+           DISPLAY "DEBUG LIB: After BYTES-TO-IP, param-2: "
+               WS-CALL-PARAM-2(1:39)
            MOVE WS-CALL-PARAM-2(1:39) TO WS-OUTPUT-STRING
+      *    DEBUG: Output string set
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
                MOVE "Failed to convert result to IP"
@@ -449,9 +497,9 @@
       ******************************************************************
        COPY-OUTPUT-RESULTS.
            IF IPCRYPT-SUCCESS
+      *        DEBUG COPY: WS-OUTPUT-STRING
                MOVE WS-OUTPUT-STRING TO LS-OUTPUT
-               MOVE FUNCTION LENGTH(FUNCTION TRIM(WS-OUTPUT-STRING))
-                    TO LS-OUTPUT-LENGTH
+               MOVE 39 TO LS-OUTPUT-LENGTH
            ELSE
                MOVE SPACES TO LS-OUTPUT
                MOVE ZERO TO LS-OUTPUT-LENGTH

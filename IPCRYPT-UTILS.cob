@@ -33,6 +33,7 @@
        01  WS-HEX-WORK-AREA.
            05  WS-HEX-STRING    PIC X(32).
            05  WS-HEX-DEST      PIC X(16).
+           05  WS-HEX-PAIR      PIC X(02).
            05  WS-INPUT-CHAR    PIC X(01).
            05  WS-TEMP-NUM      PIC 9(03) COMP.
            05  WS-TEMP-VAL      PIC 9(03) COMP.
@@ -115,7 +116,21 @@
       *            IP-TO-BYTES function
                    MOVE LS-PARAM-1(1:39) TO WS-IP-STRING
                    PERFORM IP-TO-BYTES
+                   DISPLAY "DEBUG UTILS: After IP-TO-BYTES:"
+                   DISPLAY "  DEST-BLOCK[1]: " 
+                       FUNCTION ORD(WS-DEST-BLOCK(1:1))
+                   DISPLAY "  DEST-BLOCK[11]: " 
+                       FUNCTION ORD(WS-DEST-BLOCK(11:1))
+                   DISPLAY "  DEST-BLOCK[12]: " 
+                       FUNCTION ORD(WS-DEST-BLOCK(12:1))
+                   DISPLAY "  DEST-BLOCK[13]: " 
+                       FUNCTION ORD(WS-DEST-BLOCK(13:1))
                    MOVE WS-DEST-BLOCK TO LS-PARAM-2(1:16)
+                   DISPLAY "DEBUG UTILS: After move to LS-PARAM-2:"
+                   DISPLAY "  LS-PARAM-2[1]: " 
+                       FUNCTION ORD(LS-PARAM-2(1:1))
+                   DISPLAY "  LS-PARAM-2[13]: " 
+                       FUNCTION ORD(LS-PARAM-2(13:1))
                    MOVE WS-UTIL-STATUS TO LS-STATUS
                    
                WHEN 'BYTES-TO-IP'
@@ -211,8 +226,13 @@
                    PERFORM CONVERT-DECIMAL-STRING
                    IF WS-NUMERIC-PART >= 0 AND WS-NUMERIC-PART <= 255
                        COMPUTE WS-I = 12 + WS-K
-                       MOVE FUNCTION CHAR(WS-NUMERIC-PART) 
-                            TO WS-DEST-BLOCK(WS-I:1)
+                       EVALUATE WS-NUMERIC-PART
+                           WHEN 0
+                               MOVE X"00" TO WS-DEST-BLOCK(WS-I:1)
+                           WHEN OTHER
+                               MOVE FUNCTION CHAR(WS-NUMERIC-PART + 1) 
+                                    TO WS-DEST-BLOCK(WS-I:1)
+                       END-EVALUATE
                        ADD 1 TO WS-K
                        COMPUTE WS-START-POS = WS-END-POS + 1
                    ELSE
@@ -309,8 +329,13 @@
                MOVE WS-HEX-STRING(WS-I:2) TO WS-CURRENT-PART
                PERFORM CONVERT-HEX-PAIR
                IF UTIL-SUCCESS
-                   MOVE FUNCTION CHAR(WS-BYTE-VAL) 
-                       TO WS-HEX-DEST(WS-K:1)
+                   EVALUATE WS-BYTE-VAL
+                       WHEN 0
+                           MOVE X"00" TO WS-HEX-DEST(WS-K:1)
+                       WHEN OTHER
+                           MOVE FUNCTION CHAR(WS-BYTE-VAL + 1) 
+                               TO WS-HEX-DEST(WS-K:1)
+                   END-EVALUATE
                    ADD 1 TO WS-K
                ELSE
                    EXIT
@@ -459,8 +484,12 @@
            MOVE 1 TO WS-CHAR-POS
            
            PERFORM VARYING WS-I FROM 13 BY 1 UNTIL WS-I > 16
-               COMPUTE WS-NUMERIC-PART = 
-                   FUNCTION ORD(WS-DEST-BLOCK(WS-I:1))
+               IF WS-DEST-BLOCK(WS-I:1) = X"00"
+                   MOVE 0 TO WS-NUMERIC-PART
+               ELSE
+                   COMPUTE WS-NUMERIC-PART = 
+                       FUNCTION ORD(WS-DEST-BLOCK(WS-I:1)) - 1
+               END-IF
                PERFORM APPEND-DECIMAL-TO-STRING
                IF WS-I < 16
                    MOVE '.' TO WS-IP-STRING(WS-CHAR-POS:1)
@@ -485,12 +514,62 @@
 
       ******************************************************************
       * CONVERT-TO-IPV6-STRING
-      * Convert IPv6 bytes to colon-separated hex string (placeholder)
+      * Convert IPv6 bytes to colon-separated hex string
       ******************************************************************
        CONVERT-TO-IPV6-STRING.
-           MOVE "IPv6 to string conversion not implemented" 
-                TO WS-ERROR-MESSAGE
-           SET UTIL-ERROR TO TRUE
+           MOVE SPACES TO WS-IP-STRING
+           MOVE 1 TO WS-CHAR-POS
+           
+      * Convert each 2-byte group to hex
+           PERFORM VARYING WS-I FROM 1 BY 2 UNTIL WS-I > 16
+      * Get the two bytes
+               IF WS-DEST-BLOCK(WS-I:1) = X"00"
+                   MOVE 0 TO WS-BYTE-VAL
+               ELSE
+                   COMPUTE WS-BYTE-VAL = 
+                       FUNCTION ORD(WS-DEST-BLOCK(WS-I:1)) - 1
+               END-IF
+               PERFORM CONVERT-BYTE-TO-HEX
+               MOVE WS-HEX-PAIR TO WS-IP-STRING(WS-CHAR-POS:2)
+               ADD 2 TO WS-CHAR-POS
+               
+               IF WS-DEST-BLOCK(WS-I + 1:1) = X"00"
+                   MOVE 0 TO WS-BYTE-VAL
+               ELSE
+                   COMPUTE WS-BYTE-VAL = 
+                       FUNCTION ORD(WS-DEST-BLOCK(WS-I + 1:1)) - 1
+               END-IF
+               PERFORM CONVERT-BYTE-TO-HEX
+               MOVE WS-HEX-PAIR TO WS-IP-STRING(WS-CHAR-POS:2)
+               ADD 2 TO WS-CHAR-POS
+               
+      * Add colon separator unless last group
+               IF WS-I < 15
+                   MOVE ':' TO WS-IP-STRING(WS-CHAR-POS:1)
+                   ADD 1 TO WS-CHAR-POS
+               END-IF
+           END-PERFORM
+           EXIT.
+           
+      ******************************************************************
+      * CONVERT-BYTE-TO-HEX
+      * Convert a byte value to 2-character hex string
+      ******************************************************************
+       CONVERT-BYTE-TO-HEX.
+           COMPUTE WS-J = FUNCTION INTEGER(WS-BYTE-VAL / 16)
+           COMPUTE WS-K = FUNCTION MOD(WS-BYTE-VAL, 16)
+           
+           IF WS-J < 10
+               MOVE FUNCTION CHAR(WS-J + 49) TO WS-HEX-PAIR(1:1)
+           ELSE
+               MOVE FUNCTION CHAR(WS-J + 88) TO WS-HEX-PAIR(1:1)
+           END-IF
+           
+           IF WS-K < 10
+               MOVE FUNCTION CHAR(WS-K + 49) TO WS-HEX-PAIR(2:1)
+           ELSE
+               MOVE FUNCTION CHAR(WS-K + 88) TO WS-HEX-PAIR(2:1)
+           END-IF
            EXIT.
 
       ******************************************************************
