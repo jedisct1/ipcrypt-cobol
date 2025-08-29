@@ -88,6 +88,10 @@
            88  AES-SUCCESS      VALUE 'Y'.
            88  AES-ERROR        VALUE 'N'.
 
+       01  WS-FUNCTION-NAMES.
+           05  WS-FUNC-PAD-TWEAK    PIC X(30) VALUE
+               "PAD-TWEAK-8TO16               ".
+
       ******************************************************************
       * LINKAGE SECTION - For receiving parameters from callers
       ******************************************************************
@@ -492,7 +496,7 @@
            SET AES-SUCCESS TO TRUE
            
       * Pad 8-byte tweak to 16 bytes
-           CALL 'IPCRYPT-UTILS' USING 'PAD-TWEAK-8TO16'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-PAD-TWEAK
                WS-TWEAK-8 WS-TWEAK-16
                
       * Copy input parameters
@@ -557,7 +561,7 @@
            SET AES-SUCCESS TO TRUE
            
       * Pad 8-byte tweak to 16 bytes
-           CALL 'IPCRYPT-UTILS' USING 'PAD-TWEAK-8TO16'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-PAD-TWEAK
                WS-TWEAK-8 WS-TWEAK-16
                
       * Copy input parameters

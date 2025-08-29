@@ -100,12 +100,11 @@
       ******************************************************************
        MAIN-DISPATCHER.
            SET UTIL-SUCCESS TO TRUE
-           DISPLAY "DEBUG: IPCRYPT-UTILS called with function: '"
-               LS-FUNCTION-NAME "'"
+      *    IPCRYPT-UTILS called
            
            EVALUATE LS-FUNCTION-NAME
                WHEN 'IP-TO-BYTES'
-                   DISPLAY "DEBUG: Entering IP-TO-BYTES function"
+      *            IP-TO-BYTES function
                    MOVE LS-PARAM-1 TO WS-IP-STRING
                    PERFORM IP-TO-BYTES
                    MOVE WS-DEST-BLOCK TO LS-PARAM-2
@@ -195,12 +194,12 @@
            MOVE 1 TO WS-START-POS WS-K
            PERFORM 4 TIMES
                PERFORM FIND-NEXT-DOT
-               DISPLAY "DEBUG: Found dot at pos " WS-END-POS
+      *        Found dot in IP address
                IF WS-END-POS > WS-START-POS
                    COMPUTE WS-PART-LENGTH = WS-END-POS - WS-START-POS
                    MOVE WS-IP-STRING(WS-START-POS:WS-PART-LENGTH)
                         TO WS-CURRENT-PART
-                   DISPLAY "DEBUG: Parsing octet: '" WS-CURRENT-PART "'"
+      *            Parsing octet
                    PERFORM CONVERT-DECIMAL-STRING
                    IF WS-NUMERIC-PART >= 0 AND WS-NUMERIC-PART <= 255
                        COMPUTE WS-I = 12 + WS-K
@@ -256,13 +255,13 @@
       ******************************************************************
        CONVERT-DECIMAL-STRING.
            MOVE 0 TO WS-NUMERIC-PART
-           DISPLAY "DEBUG: Testing numval for '" WS-CURRENT-PART "'"
+      *    Testing numval
            IF FUNCTION TEST-NUMVAL(WS-CURRENT-PART) = 0
                COMPUTE WS-NUMERIC-PART =
                    FUNCTION NUMVAL(WS-CURRENT-PART)
-               DISPLAY "DEBUG: Converted to numeric: " WS-NUMERIC-PART
+      *        Converted to numeric
            ELSE
-               DISPLAY "DEBUG: TEST-NUMVAL failed for '" WS-CURRENT-PART "'"
+      *        TEST-NUMVAL failed
                SET UTIL-INVALID-IP TO TRUE
            END-IF
            EXIT.

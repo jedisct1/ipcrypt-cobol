@@ -94,10 +94,19 @@
            05  WS-TEST-NAME     PIC X(50).
            05  WS-RESULT-STATUS PIC X(04).
            05  WS-HEX-KEY       PIC X(32).
-           05  WS-HEX-TWEAK     PIC X(16).
+           05  WS-HEX-TWEAK     PIC X(32).
            05  WS-BINARY-KEY    PIC X(32).
            05  WS-BINARY-TWEAK  PIC X(16).
            05  WS-UTIL-STATUS   PIC X(01).
+
+      * Protected function names in separate storage area
+       01  WS-FUNCTION-NAMES.
+           05  WS-FUNC-CONVERT-HEX PIC X(30) VALUE
+               "CONVERT-HEX-STRING-TO-BYTES   ".
+           05  WS-FUNC-IP-TO-BYTES PIC X(30) VALUE
+               "IP-TO-BYTES                   ".
+           05  WS-FUNC-BYTES-TO-IP PIC X(30) VALUE
+               "BYTES-TO-IP                   ".
 
        PROCEDURE DIVISION.
 
@@ -185,13 +194,11 @@
            ADD 1 TO WS-TOTAL-TESTS
            
       * Convert hex strings to binary
-           DISPLAY "DEBUG: About to convert hex to binary"
            PERFORM CONVERT-HEX-TO-BINARY
-           DISPLAY "DEBUG: Hex conversion completed"
            
       * Setup request structure
            SET WS-ENCRYPT TO TRUE
-           MOVE WS-MODE TO WS-IPCRYPT-REQUEST
+           MOVE WS-MODE TO WS-MODE OF WS-IPCRYPT-REQUEST
            MOVE WS-INPUT-IP TO WS-INPUT-IP OF WS-IPCRYPT-REQUEST
            MOVE WS-BINARY-KEY TO WS-KEY OF WS-IPCRYPT-REQUEST
            MOVE WS-KEY-LENGTH TO WS-KEY-LENGTH OF WS-IPCRYPT-REQUEST
@@ -199,10 +206,8 @@
            MOVE WS-TWEAK-LENGTH TO WS-TWEAK-LENGTH OF 
                WS-IPCRYPT-REQUEST
            
-      * Call IPCrypt library  
            CALL 'IPCRYPT-LIB' USING WS-IPCRYPT-REQUEST
            
-      * Check results
            IF IPCRYPT-SUCCESS
                MOVE "PASS" TO WS-RESULT-STATUS
                ADD 1 TO WS-PASSED-TESTS
@@ -211,7 +216,6 @@
                ADD 1 TO WS-FAILED-TESTS
            END-IF
            
-      * Display test result
            DISPLAY "Test " WS-CURRENT-TEST ": " WS-TEST-NAME 
                    " - " WS-RESULT-STATUS
            IF NOT IPCRYPT-SUCCESS
@@ -227,19 +231,13 @@
       ******************************************************************
        CONVERT-HEX-TO-BINARY.
       * Convert key from hex string to binary
-           DISPLAY "DEBUG: Calling IPCRYPT-UTILS for key conversion"
-           CALL 'IPCRYPT-UTILS' USING 'CONVERT-HEX-STRING-TO-BYTES'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-CONVERT-HEX
                WS-HEX-KEY WS-BINARY-KEY SPACES WS-UTIL-STATUS
-           DISPLAY "DEBUG: Key conversion completed, status: "
-               WS-UTIL-STATUS
                
       * Convert tweak from hex string to binary if provided
            IF WS-TWEAK-LENGTH > 0
-               DISPLAY "DEBUG: Calling UTILS for tweak conversion"
-               CALL 'IPCRYPT-UTILS' USING 'CONVERT-HEX-STRING-TO-BYTES'
+               CALL 'IPCRYPT-UTILS' USING WS-FUNC-CONVERT-HEX
                    WS-HEX-TWEAK WS-BINARY-TWEAK SPACES WS-UTIL-STATUS
-               DISPLAY "DEBUG: Tweak conversion completed, status: "
-                   WS-UTIL-STATUS
            END-IF
            EXIT.
 

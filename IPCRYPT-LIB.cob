@@ -36,6 +36,12 @@
 
        01  WS-ERROR-MESSAGE     PIC X(50).
 
+       01  WS-FUNCTION-NAMES.
+           05  WS-FUNC-IP-TO-BYTES  PIC X(30) VALUE
+               "IP-TO-BYTES                   ".
+           05  WS-FUNC-BYTES-TO-IP  PIC X(30) VALUE
+               "BYTES-TO-IP                   ".
+
        LINKAGE SECTION.
        01  LS-IPCRYPT-REQUEST.
            05  LS-OPERATION     PIC X(01).
@@ -62,6 +68,7 @@
       * Main entry point for all IPCrypt operations
       ******************************************************************
        MAIN-IPCRYPT-ENTRY.
+      *    IPCRYPT-LIB entry point
            PERFORM INITIALIZE-LIBRARY
            PERFORM VALIDATE-INPUT-PARAMETERS
            IF NOT IPCRYPT-SUCCESS
@@ -162,9 +169,12 @@
            SET IPCRYPT-SUCCESS TO TRUE
            
       * Convert IP address to 16-byte block
-           CALL 'IPCRYPT-UTILS' USING 'IP-TO-BYTES'
+      *    Call IP-TO-BYTES
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
                LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
+      *    IP-TO-BYTES completed
            IF NOT UTIL-SUCCESS
+      *        Set ERROR-INVALID-IP
                SET ERROR-INVALID-IP TO TRUE
                MOVE "Invalid IP address format" TO WS-ERROR-MESSAGE
                EXIT
@@ -182,7 +192,7 @@
            END-IF
            
       * Convert result back to IP address string
-           CALL 'IPCRYPT-UTILS' USING 'BYTES-TO-IP'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
                WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES WS-UTILITY-STATUS
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
@@ -202,7 +212,7 @@
            SET IPCRYPT-SUCCESS TO TRUE
            
       * Convert IP address to 16-byte block
-           CALL 'IPCRYPT-UTILS' USING 'IP-TO-BYTES'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
                LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
@@ -224,7 +234,7 @@
                MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING 'BYTES-TO-IP'
+               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
                    WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
                    WS-UTILITY-STATUS
                IF NOT UTIL-SUCCESS
@@ -248,7 +258,7 @@
                MOVE WS-KEY-128 TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING 'BYTES-TO-IP'
+               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
                    WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
                    WS-UTILITY-STATUS
                IF NOT UTIL-SUCCESS
@@ -277,7 +287,7 @@
            END-IF
            
       * Convert IP address to 16-byte block
-           CALL 'IPCRYPT-UTILS' USING 'IP-TO-BYTES'
+           CALL 'IPCRYPT-UTILS' USING WS-FUNC-IP-TO-BYTES
                LS-INPUT-IP WS-INPUT-BLOCK SPACES WS-UTILITY-STATUS
            IF NOT UTIL-SUCCESS
                SET ERROR-INVALID-IP TO TRUE
@@ -299,7 +309,7 @@
                MOVE WS-KEY-256(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING 'BYTES-TO-IP'
+               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
                    WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
                    WS-UTILITY-STATUS
                IF NOT UTIL-SUCCESS
@@ -323,7 +333,7 @@
                MOVE WS-KEY-256(1:16) TO WS-OUTPUT-BLOCK
                
       * Convert result back to IP address string
-               CALL 'IPCRYPT-UTILS' USING 'BYTES-TO-IP'
+               CALL 'IPCRYPT-UTILS' USING WS-FUNC-BYTES-TO-IP
                    WS-OUTPUT-BLOCK WS-OUTPUT-STRING SPACES
                    WS-UTILITY-STATUS
                IF NOT UTIL-SUCCESS
