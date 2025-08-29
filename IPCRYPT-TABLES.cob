@@ -121,6 +121,11 @@
            05  WS-BYTE-B        PIC X(01).
            05  WS-XOR-BYTE      PIC X(01).
            05  WS-TEMP-BYTE     PIC 9(03) COMP.
+           05  WS-TEMP-A        PIC 9(03) COMP.
+           05  WS-TEMP-B        PIC 9(03) COMP.
+           05  WS-BIT-POS       PIC 9(03) COMP.
+           05  WS-BIT-A         PIC 9(01) COMP.
+           05  WS-BIT-B         PIC 9(01) COMP.
 
       ******************************************************************
       * LINKAGE SECTION - For receiving parameters from callers
@@ -236,15 +241,14 @@
 
       ******************************************************************
       * XOR-BYTES-INTERNAL
-      * XOR two bytes together
+      * XOR two bytes together using GNU COBOL CBL_XOR extension
       ******************************************************************
        XOR-BYTES-INTERNAL.
-      * Simple XOR implementation using modulo arithmetic
-           COMPUTE WS-TEMP-BYTE =
-               FUNCTION ORD(WS-BYTE-A) + FUNCTION ORD(WS-BYTE-B)
-           COMPUTE WS-TEMP-BYTE =
-               FUNCTION MOD(WS-TEMP-BYTE, 256)
-           MOVE FUNCTION CHAR(WS-TEMP-BYTE) TO WS-XOR-BYTE
+      * Use GNU COBOL's efficient CBL_XOR routine
+           MOVE WS-BYTE-B TO WS-XOR-BYTE
+           CALL "CBL_XOR" USING WS-BYTE-A 
+                               WS-XOR-BYTE 
+                               BY VALUE 1
            EXIT.
 
       ******************************************************************
@@ -252,15 +256,18 @@
       * Multiply by 2 in GF(256) for MixColumns
       ******************************************************************
        GET-MUL2-VALUE-INTERNAL.
-           COMPUTE WS-TEMP-BYTE = FUNCTION ORD(WS-INPUT-BYTE) * 2
+           COMPUTE WS-TEMP-BYTE = FUNCTION ORD(WS-INPUT-BYTE) - 1
+           COMPUTE WS-TEMP-BYTE = WS-TEMP-BYTE * 2
            IF WS-TEMP-BYTE > 255
                COMPUTE WS-TEMP-BYTE = WS-TEMP-BYTE - 256
-               COMPUTE WS-TEMP-BYTE = WS-TEMP-BYTE - 27
-               IF WS-TEMP-BYTE < 0
-                   ADD 256 TO WS-TEMP-BYTE
-               END-IF
+      * XOR with 0x1B for GF(256) reduction
+               MOVE FUNCTION CHAR(WS-TEMP-BYTE + 1) TO WS-BYTE-A
+               MOVE X"1B" TO WS-BYTE-B
+               PERFORM XOR-BYTES-INTERNAL
+               MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
+           ELSE
+               MOVE FUNCTION CHAR(WS-TEMP-BYTE + 1) TO WS-OUTPUT-BYTE
            END-IF
-           MOVE FUNCTION CHAR(WS-TEMP-BYTE) TO WS-OUTPUT-BYTE
            EXIT.
 
       ******************************************************************
@@ -268,9 +275,10 @@
       * Multiply by 3 in GF(256) for MixColumns (mul2 XOR input)
       ******************************************************************
        GET-MUL3-VALUE-INTERNAL.
-           MOVE FUNCTION CHAR(WS-INPUT-BYTE) TO WS-BYTE-A
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
            PERFORM GET-MUL2-VALUE-INTERNAL
            MOVE WS-OUTPUT-BYTE TO WS-BYTE-B
+           MOVE WS-INPUT-BYTE TO WS-BYTE-A
            PERFORM XOR-BYTES-INTERNAL
            MOVE WS-XOR-BYTE TO WS-OUTPUT-BYTE
            EXIT.
